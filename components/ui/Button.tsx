@@ -8,11 +8,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
 }
 
-// Text on accent fills is always the dark ink, as in the prototype, so it stays readable on amber and yellow.
+// Text on accent fills uses the `on-accent` token (dark in every theme), so it stays readable on amber and yellow.
 const VARIANTS: Record<ButtonVariant, string> = {
   default: 'border-ink bg-panel text-ink hover:bg-ink hover:text-panel',
-  accent: 'border-ink bg-accent text-[#1B1A17] hover:bg-ink hover:text-panel',
-  ink: 'border-ink bg-ink text-panel hover:bg-accent hover:text-[#1B1A17]',
+  accent: 'border-ink bg-accent text-on-accent hover:bg-ink hover:text-panel',
+  ink: 'border-ink bg-ink text-panel hover:bg-accent hover:text-on-accent',
   ghost: 'border-transparent bg-transparent text-ink hover:text-accent',
 };
 

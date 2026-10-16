@@ -35,13 +35,13 @@ export function TwoStepDelete({ onConfirm, label = 'Delete', confirmLabel = 'Con
     timer.current = setTimeout(() => { setArmed(false); timer.current = null; }, RESET_MS);
   };
 
-  const tone = armed ? 'bg-accent text-[#1B1A17]' : 'bg-panel text-ink';
+  const tone = armed ? 'bg-accent text-on-accent' : 'bg-panel text-ink';
   return (
     <button
       type="button"
       title={title}
       onClick={click}
-      className={`cursor-pointer px-4 py-[13px] font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] hover:bg-accent hover:text-[#1B1A17] ${tone} ${className}`}
+      className={`cursor-pointer px-4 py-[13px] font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] hover:bg-accent hover:text-on-accent ${tone} ${className}`}
     >
       {armed ? confirmLabel : label}
     </button>

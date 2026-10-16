@@ -14,7 +14,7 @@ const BASE = 'inline-flex items-center gap-1.5 border border-ink px-2 py-[5px] f
 
 /** Small bordered chip: child chips on the node card, phase labels, tags. */
 export function Pill({ children, onClick, active = false, title, className = '' }: PillProps) {
-  const tone = active ? 'bg-accent text-[#1B1A17]' : 'bg-bg text-ink';
+  const tone = active ? 'bg-accent text-on-accent' : 'bg-bg text-ink';
   if (!onClick) return <span title={title} className={`${BASE} ${tone} ${className}`}>{children}</span>;
   return (
     <button type="button" title={title} onClick={onClick} className={`${BASE} ${tone} cursor-pointer hover:bg-ink hover:text-panel ${className}`}>

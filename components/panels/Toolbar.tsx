@@ -63,7 +63,7 @@ export function Toolbar({ onDownloadHtml3d }: ToolbarProps) {
           type="button"
           title="Focus mode: hide all panels"
           onClick={enterFocus}
-          className={`${SEGMENT} cursor-pointer bg-accent text-[#1B1A17] hover:bg-ink hover:text-panel`}
+          className={`${SEGMENT} cursor-pointer bg-accent text-on-accent hover:bg-ink hover:text-panel`}
         >
           Focus
         </button>

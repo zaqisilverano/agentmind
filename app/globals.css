@@ -9,6 +9,7 @@
   --color-soft: var(--soft);
   --color-faint: var(--faint);
   --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
   --color-hot: var(--hot);
   --color-rule: var(--rule);
   --color-rule2: var(--rule2);

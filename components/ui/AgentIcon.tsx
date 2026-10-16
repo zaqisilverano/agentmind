@@ -9,13 +9,14 @@ export interface AgentIconProps {
 /**
  * The agent's flat shape with its eyes, as an 18×16 SVG. The body carries a same-colour stroke
  * (as in the prototype) so thin shapes read at small sizes; there is no contrasting outline.
+ * Pupils use the `--on-accent` token (the prototype's fixed dark).
  */
 export function AgentIcon({ agent, size = 18 }: AgentIconProps) {
   return (
     <svg width={size} height={(size * 16) / 18} viewBox="0 0 18 16" aria-hidden="true" className="flex-none overflow-visible">
       <path d={agent.icon} fill={agent.color} stroke={agent.color} strokeWidth={1.4} strokeLinejoin="round" />
       {agent.eyes && <path d={agent.eyes} fill={agent.eyeFill} />}
-      {agent.pupils && <path d={agent.pupils} fill="#1B1A17" />}
+      {agent.pupils && <path d={agent.pupils} fill="var(--on-accent)" />}
     </svg>
   );
 }
