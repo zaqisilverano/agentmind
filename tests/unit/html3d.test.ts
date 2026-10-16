@@ -72,4 +72,11 @@ describe('public/export/layout.js', () => {
     expect(Object.keys(api).sort()).toEqual(['GROUND_Y', 'buildPeaks', 'computeTargets', 'hash', 'heightAt', 'orbitParams']);
     expect(api.computeTargets(brain.nodes, 'orbit', 0).n0).toEqual({ x: 0, y: 0, z: 0 });
   });
+  it('the viewer module script parses as an ES module (a syntax error would only show in the browser)', async () => {
+    const { transform } = await import('esbuild');
+    const viewer = /<script type="module">([\s\S]*?)<\/script>/.exec(html)![1];
+    expect(viewer).toContain('import * as THREE');
+    await expect(transform(viewer, { loader: 'js', format: 'esm' })).resolves.toBeDefined();
+    await expect(transform(`${viewer}\nconst broken = ;`, { loader: 'js', format: 'esm' })).rejects.toThrow();
+  });
 });
