@@ -198,6 +198,21 @@ describe('AgentRunner', () => {
     expect(runner.running).toBe(false);
   });
 
+  it('only spawns what fits under the node ceiling, and stops with the limit message on a full brain', async () => {
+    const { h, runner } = setup();
+    const pad = (n: number) => Array.from({ length: n }, (_, i) => ({ ...h.brain.nodes[1], id: `pad${i}`, parent: 'n0', depth: 1 }));
+    h.brain.nodes.push(...pad(299 - h.brain.nodes.length));
+    let calls = 0;
+    h.onAgentRound = () => { calls += 1; };
+    await runner.start('brain-1', 3);
+    expect(h.rounds.map((r) => r.nodes)).toEqual([1]);
+    expect(h.brain.nodes).toHaveLength(300);
+    expect(calls).toBe(1);
+    expect(h.emitted).toContain('error:this brain is full (300 nodes)');
+    expect(h.emitted).not.toContain('finished');
+    expect(types(h.events).at(-1)).toBe('done');
+  });
+
   it('falls back to the heuristic leaf (depth + 1.5 if linked) when the reply leaf is unknown', async () => {
     const { h, runner } = setup();
     h.leaf = 'nope';

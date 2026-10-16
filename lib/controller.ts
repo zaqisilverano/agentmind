@@ -34,6 +34,17 @@ export const getController = (): Controller | null => current;
 const store = () => useStore.getState();
 
 /**
+ * Wraps a sync save for the runner: resolves true on success; on failure rejects with the server's message when it sent
+ * one (e.g. "this brain is full (300 nodes)", shown as the run's status), otherwise resolves false.
+ */
+const surfaced = <A extends unknown[]>(save: (...args: A) => Promise<boolean>) => async (...args: A): Promise<boolean> => {
+  if (await save(...args)) return true;
+  const message = store().syncError?.message;
+  if (message) throw new Error(message);
+  return false;
+};
+
+/**
  * Owns the one AgentRunner. It is created on the first run and wired to the scene through `scene()`, so it does not
  * matter whether the Atlas has mounted yet. Runner events land in the store; runner `log` events are ignored because
  * `sync.applyRound` already appended the entry. Also pauses the runner when the open brain changes, and clears a
@@ -47,7 +58,7 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
     if (runner) return runner;
     const r = new AgentRunner({
       api: { agentRound: (body) => api.llm.agentRound(body), takeaway: (body) => api.llm.takeaway(body) },
-      sync: { applyRound, setTakeaway },
+      sync: { applyRound: surfaced(applyRound), setTakeaway: surfaced(setTakeaway) },
       getBrain: () => store().brain,
       scene: (ev) => scene()?.agent(ev) ?? Promise.resolve(),
       ink: () => THEMES[store().theme].ink,

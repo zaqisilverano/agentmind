@@ -1,5 +1,6 @@
 import type { AgentEvent, AgentId, Brain, CrossLink, IdeaNode, LogEntry, Takeaway } from '@/engine/types';
 import { agentForRound } from '@/lib/agents/roster';
+import { BRAIN_FULL_MESSAGE, MAX_NODES_PER_BRAIN } from '@/lib/brains/limits';
 import { makeKids } from '@/lib/agents/makeKids';
 import { pickTarget } from '@/lib/agents/pickTarget';
 import type { apiClient, LlmMeta } from '@/lib/apiClient';
@@ -124,6 +125,9 @@ export class AgentRunner {
         if (!before) break;
         const r = before.round + 1;
         const agent = agentForRound(r - 1);
+        // A full brain stops the run before spending an LLM call (the server enforces the same ceiling).
+        const room = MAX_NODES_PER_BRAIN - before.nodes.length;
+        if (room <= 0) throw new Error(BRAIN_FULL_MESSAGE);
         const target = pickTarget(agent, before.nodes, this.hits.counts, rand);
         if (!target) break;
         this.hits.counts[target.id] = (this.hits.counts[target.id] ?? 0) + 1;
@@ -146,7 +150,7 @@ export class AgentRunner {
         meta(reply.meta);
         if (!alive()) break;
 
-        const children = makeKids(target, reply.data.children, agent, deps.ink(), now().toString(36));
+        const children = makeKids(target, reply.data.children, agent, deps.ink(), now().toString(36)).slice(0, room);
         const links = this.validLinks(before.nodes.concat(children), before.links, reply.data.links, target.id, agent.id);
         const entry: Omit<LogEntry, 'seq'> = { agent: agent.id, text: reply.data.thought, node: target.id, tag: `R${r} · +${children.length}` };
 

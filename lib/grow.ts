@@ -1,4 +1,5 @@
 import { THEMES } from '@/engine/themes';
+import { BRAIN_FULL_MESSAGE, MAX_NODES_PER_BRAIN } from '@/lib/brains/limits';
 import { KINDS, KIND_COLORS, type IdeaNode } from '@/engine/types';
 import type { LlmMeta } from '@/lib/apiClient';
 import { controllerApi, getController } from '@/lib/controller';
@@ -88,6 +89,10 @@ export async function expandNode(id: string, question?: string): Promise<boolean
   const brain = store().brain;
   const node = brain?.nodes.find((n) => n.id === id);
   if (!brain || !node || store().ui.busy || runBusy()) return false;
+  if (brain.nodes.length >= MAX_NODES_PER_BRAIN) {
+    store().setStatus(BRAIN_FULL_MESSAGE);
+    return false;
+  }
   const q = question?.trim().slice(0, 300) || undefined;
   store().setBusy('expand');
   store().setStatus(q ? `Asking: ${q}…` : `Expanding ${node.name}…`);
@@ -106,8 +111,16 @@ export async function expandNode(id: string, question?: string): Promise<boolean
       store().setStatus('');
       return false;
     }
-    const kids = expandKids(target, data.children, now.nodes.filter((n) => n.parent === id).length);
-    await addChildren(kids);
+    const room = Math.max(0, MAX_NODES_PER_BRAIN - now.nodes.length);
+    if (room === 0) {
+      store().setStatus(BRAIN_FULL_MESSAGE);
+      return false;
+    }
+    const kids = expandKids(target, data.children, now.nodes.filter((n) => n.parent === id).length).slice(0, room);
+    if (!(await addChildren(kids))) {
+      store().setStatus(store().syncError?.message ?? `The ideas for ${target.name} were not saved`);
+      return false;
+    }
     store().setStatus(`+${kids.length} on ${target.name} · ${providerText(meta)}`);
     return kids.length > 0;
   } catch (e) {

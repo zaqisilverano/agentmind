@@ -1,5 +1,5 @@
 import type { Brain, CrossLink, IdeaNode, LogEntry, Takeaway } from '@/engine/types';
-import { apiClient, type ApiClient, type BrainListRow, type MeResponse, type PatchNodeRequest } from '@/lib/apiClient';
+import { ApiError, apiClient, type ApiClient, type BrainListRow, type MeResponse, type PatchNodeRequest } from '@/lib/apiClient';
 import { initialState, useStore } from '@/lib/store';
 
 /**
@@ -35,8 +35,9 @@ async function send<T>(label: string, call: () => Promise<T>, onOk?: (result: T)
       if (isRetry) store().setSyncError(null);
       await onOk?.(result);
       return true;
-    } catch {
-      store().setSyncError({ label, retry: async () => void (await run(true)) });
+    } catch (e) {
+      const retry = async (): Promise<void> => void (await run(true));
+      store().setSyncError(e instanceof ApiError ? { label, message: e.message, retry } : { label, retry });
       return false;
     }
   };
@@ -157,14 +158,15 @@ export async function deleteSubtree(nodeId: string): Promise<void> {
   await send('Delete node', () => api.deleteNode(brain.id, nodeId));
 }
 
-export async function addChildren(nodes: IdeaNode[]): Promise<void> {
+/** Resolves false when the save failed (nothing to add counts as success). */
+export async function addChildren(nodes: IdeaNode[]): Promise<boolean> {
   const brain = store().brain;
-  if (!brain) return;
+  if (!brain) return false;
   const have = new Set(brain.nodes.map((n) => n.id));
   const fresh = nodes.filter((n) => !have.has(n.id) && have.add(n.id));
-  if (fresh.length === 0) return;
+  if (fresh.length === 0) return true;
   store().patchBrain((b) => ({ ...b, nodes: [...b.nodes, ...fresh] }));
-  await send('Add ideas', () => api.addNodes(brain.id, fresh));
+  return send('Add ideas', () => api.addNodes(brain.id, fresh));
 }
 
 const linkKey = (l: { a: string; b: string }): string => `${l.a}~${l.b}`;

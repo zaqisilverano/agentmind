@@ -10,7 +10,8 @@ export interface RunState { active: boolean; paused: boolean; round: number; tot
 export type Busy = 'map' | 'expand' | null;
 export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy }
 export interface Provider { source: 'model' | 'fallback'; model?: string }
-export interface SyncError { label: string; retry: () => Promise<void> }
+/** A failed save. `message` is the server's error text when it sent one (e.g. "this brain is full (300 nodes)"). */
+export interface SyncError { label: string; message?: string; retry: () => Promise<void> }
 
 export interface State {
   user: MeResponse['user'] | null;

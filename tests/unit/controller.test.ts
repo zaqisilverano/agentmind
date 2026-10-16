@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { KIND_COLORS, type Brain, type IdeaNode } from '@/engine/types';
-import type { ApiClient } from '@/lib/apiClient';
+import { ApiError, type ApiClient } from '@/lib/apiClient';
 import { configureController, createController, type ControllerApi } from '@/lib/controller';
 import { expandKids, expandNode, mapIdea, pathNames } from '@/lib/grow';
 import { fallback } from '@/lib/llm/fallback';
@@ -22,6 +22,12 @@ const llm: ControllerApi = {
 };
 
 let brain: Brain;
+
+/** Pads the fixture brain with depth-1 nodes until it holds `total` nodes. */
+const padTo = (b: Brain, total: number): Brain => ({
+  ...b,
+  nodes: [...b.nodes, ...Array.from({ length: total - b.nodes.length }, (_, i) => ({ ...b.nodes[1], id: `pad${i}`, name: `Pad ${i}`, parent: 'n0', depth: 1, position: 100 + i }))],
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -72,6 +78,23 @@ describe('grow', () => {
     expect(await expandNode('b2')).toBe(false);
     expect(llm.llm.expand).not.toHaveBeenCalled();
   });
+  it('expandNode on a full brain shows the limit without calling the LLM', async () => {
+    useStore.setState({ brain: padTo(brain, 300) });
+    expect(await expandNode('b2')).toBe(false);
+    expect(useStore.getState().run.status).toBe('this brain is full (300 nodes)');
+    expect(llm.llm.expand).not.toHaveBeenCalled();
+  });
+  it('expandNode adds only what fits and shows the server message when the save is refused', async () => {
+    useStore.setState({ brain: padTo(brain, 298) });
+    expect(await expandNode('b2')).toBe(true);
+    expect(useStore.getState().brain!.nodes).toHaveLength(300);
+    useStore.setState({ brain: padTo(brain, 296) });
+    const addNodes = vi.fn(async () => { throw new ApiError(400, 'this brain is full (300 nodes)'); });
+    configureSync({ api: { addNodes } as unknown as ApiClient });
+    expect(await expandNode('b2')).toBe(false);
+    expect(useStore.getState().run.status).toBe('this brain is full (300 nodes)');
+    expect(useStore.getState().syncError).toMatchObject({ label: 'Add ideas', message: 'this brain is full (300 nodes)' });
+  });
   it('mapIdea creates and opens a new brain', async () => {
     expect(await mapIdea('a tool library for renters')).toBe(true);
     const s = useStore.getState();
@@ -107,6 +130,30 @@ describe('controller', () => {
     expect(s.run).toMatchObject({ active: false, paused: false, phase: null, agent: null, round: brain.round + 5, total: brain.round + 5, status: 'Done · 5 rounds' });
     expect(s.ui.takeawayOpen).toBe(true);
     expect(s.ui.showPath).toBe(true);
+  });
+
+  it('a full brain stops the run with the limit in the status line', async () => {
+    useStore.setState({ brain: padTo(brain, 300) });
+    await run();
+    expect(useStore.getState().run).toMatchObject({ active: false, paused: true, status: 'this brain is full (300 nodes)' });
+    expect(llm.llm.agentRound).not.toHaveBeenCalled();
+  });
+
+  it('a round the server refuses as full stops the run with its message', async () => {
+    configureSync({ api: { applyRound: vi.fn(async () => { throw new ApiError(400, 'this brain is full (300 nodes)'); }) } as unknown as ApiClient });
+    await run();
+    const s = useStore.getState();
+    expect(s.run).toMatchObject({ active: false, paused: true, status: 'this brain is full (300 nodes)' });
+    expect(llm.llm.agentRound).toHaveBeenCalledTimes(1);
+    expect(llm.llm.takeaway).not.toHaveBeenCalled();
+  });
+
+  it('a round that fails without a server message stops the run as "Round not saved"', async () => {
+    configureSync({ api: { applyRound: vi.fn(async () => { throw new Error('boom'); }) } as unknown as ApiClient });
+    await run();
+    expect(useStore.getState().run).toMatchObject({ active: false, paused: true, status: 'Round not saved' });
+    expect(useStore.getState().syncError).toMatchObject({ label: 'Save round' });
+    expect(useStore.getState().syncError?.message).toBeUndefined();
   });
 
   it('a brain switch stops the run in the store at once', () => {
