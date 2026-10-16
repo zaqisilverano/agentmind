@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { makeTestDb } from './_harness';
 import { brains, links, logEntries, nodes } from '@/db/schema';
 import { nodeRow } from '@/lib/brains/repo';
+import { sampleBrain } from '@/lib/sample/toolLibrary';
 
 process.env.COOKIE_SECRET = 's'.repeat(32);
 process.env.DATABASE_URL = 'postgres://unused';
@@ -41,9 +42,12 @@ const node = (id: string, parent: string | null, depth: number, extra: Record<st
   id, name: id, note: '', kind: parent === null ? 'Core' : 'Problem', parent, depth, color: '#E0482B', position: 0, ...extra,
 });
 
+/** A first visit starts empty, so tests that need a populated brain create the Tool Library sample through the API. */
 async function sampleId(cookie: string): Promise<string> {
-  const { body } = await call(me.GET as Handler, 'GET', '/api/me', undefined, cookie);
-  return body.data.brains[0].id;
+  const { title, summary, nodes: sampleNodes } = sampleBrain('#1B1A17');
+  const { status, body } = await call(list.POST, 'POST', '/api/brains', { title, summary, nodes: sampleNodes }, cookie);
+  if (status !== 200) throw new Error(`could not create the sample brain: ${JSON.stringify(body)}`);
+  return body.data.id;
 }
 
 const countNodes = async (brainId: string) => (await db.select().from(nodes).where(eq(nodes.brainId, brainId))).length;
@@ -53,18 +57,18 @@ describe('brain routes', () => {
     db = await makeTestDb();
   });
 
-  it('(a) create assigns the next number after the sample', async () => {
+  it('(a) a new user has no brains; the first create is number 1, then 2', async () => {
     const cookie = await asUser();
-    await sampleId(cookie);
+    expect((await call(list.GET, 'GET', '/api/brains', undefined, cookie)).body.data).toEqual([]);
     const mk = (title: string) => call(list.POST, 'POST', '/api/brains', { title, nodes: [node('n0', null, 0)] }, cookie);
-    const one2 = await mk('Two');
-    const one3 = await mk('Three');
-    expect(one2.status).toBe(200);
-    expect(one2.body.data).toMatchObject({ number: 2, title: 'Two', round: 0, synth: null, links: [], log: [] });
-    expect(one2.body.data.nodes).toHaveLength(1);
-    expect(one3.body.data.number).toBe(3);
+    const first = await mk('One');
+    const second = await mk('Two');
+    expect(first.status).toBe(200);
+    expect(first.body.data).toMatchObject({ number: 1, title: 'One', round: 0, synth: null, links: [], log: [] });
+    expect(first.body.data.nodes).toHaveLength(1);
+    expect(second.body.data.number).toBe(2);
     const listed = await call(list.GET, 'GET', '/api/brains', undefined, cookie);
-    expect(listed.body.data.map((b: { number: number }) => b.number)).toEqual([3, 2, 1]);
+    expect(listed.body.data.map((b: { number: number }) => b.number)).toEqual([2, 1]);
   });
 
   it('rejects a create without exactly one n0 root', async () => {

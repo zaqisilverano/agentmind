@@ -7,16 +7,23 @@ import { IdentityLine } from './IdentityLine';
 import { Legend } from './Legend';
 import { TakeawayCard } from './TakeawayCard';
 
+const EMPTY_TITLE = 'Your second brain';
+const EMPTY_SUMMARY = 'Type an idea below. The map, the agents and the takeaway grow from there.';
+
 /**
  * Top-left column on the page background: brain dropdown, title and summary, key takeaway, agent team,
  * branch legend and the identity line. Geometry copies the prototype (content 300 px wide at 44/40 with
  * 14/16 px padding pulled out by negative margins), so the box is 333 px at 28/26 and ends 136 px above
- * the bottom. When hidden, a "» {title}" tab brings it back.
+ * the bottom. When hidden, a "» {title}" tab brings it back. With no brains at all it shows a placeholder title and
+ * summary, the idle team and the identity line, without the takeaway or the legend.
  */
 export function LeftPanel() {
   const hidden = useStore(s => s.ui.leftHidden);
-  const title = useStore(s => s.brain?.title ?? '');
-  const summary = useStore(s => s.brain?.summary ?? '');
+  // Empty state: no brain open and none saved (first visit, or the last one was deleted).
+  const empty = useStore(s => s.brain === null && s.brains.length === 0);
+  const hasNodes = useStore(s => (s.brain?.nodes.length ?? 0) > 0);
+  const title = useStore(s => s.brain?.title ?? (empty ? EMPTY_TITLE : ''));
+  const summary = useStore(s => s.brain?.summary ?? (empty ? EMPTY_SUMMARY : ''));
   const toggleLeft = useStore(s => s.toggleLeft);
 
   if (hidden) {
@@ -39,9 +46,9 @@ export function LeftPanel() {
         <div className="font-serif text-[46px] leading-[0.95] tracking-[-0.01em]">{title}</div>
         <div className="font-serif text-[18px] leading-[1.3] text-pretty text-soft italic">{summary}</div>
       </div>
-      <TakeawayCard />
+      {!empty && <TakeawayCard />}
       <AgentTeam />
-      <Legend />
+      {hasNodes && <Legend />}
       <IdentityLine />
     </aside>
   );

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { makeTestDb } from './_harness';
-import { users } from '@/db/schema';
+import { brains, users } from '@/db/schema';
 
 process.env.COOKIE_SECRET = 's'.repeat(32);
 process.env.DATABASE_URL = 'postgres://unused';
@@ -18,15 +18,16 @@ describe('GET /api/me', () => {
     db = await makeTestDb();
   });
 
-  it('first visit sets cookie and seeds the sample brain', async () => {
+  it('first visit sets cookie and starts with no brains', async () => {
     const res = await GET(new Request('http://t/api/me'));
     expect(res.headers.get('set-cookie')).toMatch(/^ab_uid=.*HttpOnly/);
     const body = await res.json();
-    expect(body.data.brains).toHaveLength(1);
-    expect(body.data.brains[0]).toMatchObject({ number: 1, title: 'Tool Library', nodeCount: 24 });
+    expect(body.data.user.id).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(body.data.brains).toEqual([]);
+    expect(await db.select().from(brains)).toHaveLength(0);
   });
 
-  it('second visit with the cookie reuses identity and does not reseed', async () => {
+  it('second visit with the cookie reuses identity and still has no brains', async () => {
     const first = await GET(new Request('http://t/api/me'));
     const cookie = first.headers.get('set-cookie')!.split(';')[0];
     const second = await GET(new Request('http://t/api/me', { headers: { cookie } }));
@@ -34,7 +35,7 @@ describe('GET /api/me', () => {
     const body1 = await first.json();
     const body2 = await second.json();
     expect(body1.data.user.id).toBe(body2.data.user.id);
-    expect(body2.data.brains).toHaveLength(1);
+    expect(body2.data.brains).toEqual([]);
   });
 
   it('treats a validly signed cookie for an unknown user as missing', async () => {

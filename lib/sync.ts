@@ -55,6 +55,9 @@ function toRow(b: Brain): BrainListRow {
   return { id: b.id, number: b.number, title: b.title, nodeCount: b.nodes.length, updatedAt: b.updatedAt };
 }
 
+/** Status line while the user has no brains at all (first visit, or after deleting the last one). */
+export const EMPTY_STATUS = 'Type an idea to map your first second brain.';
+
 let selectToken = 0;
 
 /** Not optimistic: the brain is fetched first. Pauses any run straight away. */
@@ -81,6 +84,7 @@ export async function switchUser(me: MeResponse): Promise<void> {
   store().hydrate(me);
   const first = me.brains[0];
   if (first) await selectBrain(first.id);
+  else store().setStatus(EMPTY_STATUS);
 }
 
 export async function createBrain(title: string, summary: string, nodes: IdeaNode[], links: CrossLink[] = []): Promise<Brain | null> {
@@ -98,7 +102,7 @@ export async function createBrain(title: string, summary: string, nodes: IdeaNod
 /**
  * Drops the list row at once. When it is the open brain, also closes it at once (pauses the run, clears brain and
  * selection, invalidates in-flight opens) before the DELETE goes out, then opens the next most recent brain, unless
- * the user opened or created another one meanwhile.
+ * the user opened or created another one meanwhile. Deleting the last brain leaves the empty state (no brain, empty list).
  */
 export async function deleteBrain(id: string): Promise<void> {
   const wasCurrent = currentId() === id;
@@ -108,6 +112,7 @@ export async function deleteBrain(id: string): Promise<void> {
     token = ++selectToken;
     store().setRun({ active: false, paused: true });
     useStore.setState({ brain: null, selected: null });
+    if (store().brains.length === 0) store().setStatus(EMPTY_STATUS);
   }
   await send('Delete brain', () => api.deleteBrain(id), async () => {
     if (!wasCurrent || token !== selectToken) return;

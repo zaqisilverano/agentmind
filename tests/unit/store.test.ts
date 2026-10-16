@@ -263,11 +263,13 @@ describe('createBrain / selectBrain / deleteBrain', () => {
     expect(useStore.getState().brain!.id).toBe('other');
   });
 
-  it('deleteBrain of the last brain leaves nothing open', async () => {
+  it('deleteBrain of the last brain leaves nothing open and shows the empty-state status', async () => {
+    useStore.getState().setStatus('Takeaway ready');
     await sync.deleteBrain(brain.id);
     expect(api.deleteBrain).toHaveBeenCalledWith(brain.id);
     expect(api.getBrain).not.toHaveBeenCalled();
     expect(useStore.getState()).toMatchObject({ brain: null, brains: [], selected: null });
+    expect(useStore.getState().run.status).toBe(sync.EMPTY_STATUS);
   });
 
   it('deleteBrain does not reopen anything when the user opened another brain while the DELETE was in flight', async () => {
@@ -328,7 +330,7 @@ describe('switchUser', () => {
     const s = useStore.getState();
     expect(s.brain).toBeNull();
     expect(s.brains).toEqual([]);
-    expect(s.run).toMatchObject({ active: false, paused: true });
+    expect(s.run).toMatchObject({ active: false, paused: true, status: sync.EMPTY_STATUS });
     expect(api.getBrain).toHaveBeenCalledTimes(1);
   });
 });

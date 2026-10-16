@@ -9,7 +9,7 @@ import { TwoStepDelete } from '@/components/ui/TwoStepDelete';
 const pad3 = (n: number) => String(n).padStart(3, '0');
 
 /**
- * "Second brain № 001 ▾" with the saved-brain list, "+ New second brain" and a two-step "Delete this brain" for the open
+ * "Second brain № 001 ▾" ("Second brain — ▾" with no brain open) with the saved-brain list, "+ New second brain" and a two-step "Delete this brain" for the open
  * brain, plus the « button that hides the left panel.
  */
 export function BrainDropdown() {
@@ -55,7 +55,7 @@ export function BrainDropdown() {
         label={isOpen => (
           <>
             <span className="text-muted">Second brain</span>
-            <span className="flex-1">№ {number === null ? '—' : pad3(number)}</span>
+            <span className="flex-1">{number === null ? '—' : `№ ${pad3(number)}`}</span>
             <span>{isOpen ? '▴' : '▾'}</span>
           </>
         )}

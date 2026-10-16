@@ -8,6 +8,8 @@ import { expect, test, type BrowserContext, type Locator, type Page } from '@pla
  */
 
 const IDEA = 'A night market for repair services';
+const EMPTY_TITLE = 'Your second brain';
+const EMPTY_STATUS = 'Type an idea to map your first second brain.';
 const UID_DISPLAY_KEY = 'ab_uid_display';
 
 /** Console noise that is not an app error: SwiftShader's GPU stall warning and the missing favicon. */
@@ -60,12 +62,29 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
     await context?.close();
   });
 
-  test('1. first visit shows the sample brain', async () => {
+  test('1. first visit starts with an empty map', async () => {
     await page.goto('/');
-    const { leftPanel, brainButton, status } = ui(page);
-    await expect(leftPanel.getByText('Tool Library', { exact: true })).toBeVisible({ timeout: 60_000 });
-    await expect(brainButton).toContainText('№ 001');
-    await expect(status).not.toHaveText('Could not reach the server');
+    const { leftPanel, brainButton, status, inputBar } = ui(page);
+    await expect(leftPanel.getByText(EMPTY_TITLE, { exact: true })).toBeVisible({ timeout: 60_000 });
+    await expect(leftPanel.getByText(/^Type an idea below\./)).toBeVisible();
+    await expect(status).toHaveText(EMPTY_STATUS);
+    await expect(brainButton).toHaveText(/^Second brain\s*—/);
+    await expect(brainButton).not.toContainText('№');
+    await expect(inputBar.getByRole('textbox', { name: 'New idea' })).toBeFocused();
+    await expect(inputBar.getByRole('button', { name: /Map it/ })).toBeEnabled();
+    await expect(inputBar.getByRole('button', { name: /Run agents/ })).toBeDisabled();
+    await expect(leftPanel.getByText('Legend — branches')).toHaveCount(0);
+    await expect(leftPanel.getByText('Key takeaway')).toHaveCount(0);
+    await expect(page.locator('.atlas-label')).toHaveCount(0);
+    await brainButton.click();
+    await expect(leftPanel.getByRole('button', { name: '+ New second brain', exact: true })).toBeVisible();
+    await expect(leftPanel.getByRole('button', { name: 'Delete this brain', exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await leftPanel.getByTitle('Hide panel').click();
+    const tab = page.getByTitle('Show panel');
+    await expect(tab).toHaveText(`» ${EMPTY_TITLE}`);
+    await tab.click();
+    await expect(leftPanel).toBeVisible();
   });
 
   test('2. typing an idea and pressing Enter maps a new brain', async () => {
@@ -73,7 +92,7 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
     const input = inputBar.getByRole('textbox', { name: 'New idea' });
     await input.fill(IDEA);
     await input.press('Enter');
-    await expect(brainButton).toContainText('№ 002', { timeout: 10_000 });
+    await expect(brainButton).toContainText('№ 001', { timeout: 10_000 });
     await expect(page.locator('.atlas-label', { hasText: /Night|Market|Repair/ }).first()).toBeAttached({ timeout: 10_000 });
   });
 
@@ -186,8 +205,8 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
       const other = await fresh.newPage();
       await other.goto('/');
       const o = ui(other);
-      await expect(o.leftPanel.getByText('Tool Library', { exact: true })).toBeVisible({ timeout: 60_000 });
-      await expect(o.brainButton).toContainText('№ 001');
+      await expect(o.leftPanel.getByText(EMPTY_TITLE, { exact: true })).toBeVisible({ timeout: 60_000 });
+      await expect(o.brainButton).not.toContainText('№');
       await expect.poll(() => other.evaluate(key => window.localStorage.getItem(key), UID_DISPLAY_KEY)).not.toBeNull();
       const otherId = await other.evaluate(key => window.localStorage.getItem(key), UID_DISPLAY_KEY);
       expect(otherId).not.toBe(copied);
@@ -196,31 +215,35 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
       await o.leftPanel.getByRole('textbox', { name: 'ID to restore' }).fill(copied);
       await o.leftPanel.getByRole('button', { name: 'Restore', exact: true }).click();
 
-      await expect(o.brainButton).toContainText('№ 002', { timeout: 15_000 });
+      await expect(o.brainButton).toContainText('№ 001', { timeout: 15_000 });
       await expect(o.leftPanel.getByText('Night Market Repair', { exact: true })).toBeVisible();
       await o.brainButton.click();
       const menu = o.leftPanel.getByRole('button', { name: /Night Market Repair/ });
-      await expect(menu).toContainText('002');
-      await expect(o.leftPanel.getByRole('button', { name: /Tool Library/ })).toContainText('001');
+      await expect(menu).toContainText('001');
+      await expect(o.leftPanel.getByRole('button', { name: /Tool Library/ })).toHaveCount(0);
     } finally {
       await fresh.close();
     }
   });
 
-  test('11. Delete this brain removes it and opens the next one', async () => {
-    const { leftPanel, brainButton } = ui(page);
-    await expect(brainButton).toContainText('№ 002');
+  test('11. Deleting the only brain returns to the empty state', async () => {
+    const { leftPanel, brainButton, status } = ui(page);
+    await expect(brainButton).toContainText('№ 001');
     await brainButton.click();
     const del = leftPanel.getByRole('button', { name: 'Delete this brain', exact: true });
     await del.click();
     await leftPanel.getByRole('button', { name: 'Confirm delete?', exact: true }).click();
-    await expect(brainButton).toContainText('№ 001', { timeout: 15_000 });
-    await expect(leftPanel.getByText('Tool Library', { exact: true })).toBeVisible();
-    await expect(page.locator('.atlas-label', { hasText: 'Night Market Repair' })).toHaveCount(0);
+    await expect(brainButton).toHaveText(/^Second brain\s*—/, { timeout: 15_000 });
+    await expect(leftPanel.getByText(EMPTY_TITLE, { exact: true })).toBeVisible();
+    await expect(status).toHaveText(EMPTY_STATUS);
+    await expect(leftPanel.getByText('Legend — branches')).toHaveCount(0);
+    await expect(leftPanel.getByText('Key takeaway')).toHaveCount(0);
+    await expect(page.locator('.atlas-label')).toHaveCount(0);
     await brainButton.click();
-    await expect(leftPanel.getByRole('button', { name: /Tool Library/ })).toContainText('001');
     await expect(leftPanel.getByRole('button', { name: /Night Market Repair/ })).toHaveCount(0);
-    await expect(leftPanel.getByRole('button', { name: /^002/ })).toHaveCount(0);
+    await expect(leftPanel.getByRole('button', { name: /^001/ })).toHaveCount(0);
+    await expect(leftPanel.getByRole('button', { name: 'Delete this brain', exact: true })).toHaveCount(0);
+    await expect(leftPanel.getByRole('button', { name: '+ New second brain', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
   });
 });

@@ -5,7 +5,6 @@ import type { AgentId, Brain, IdeaNode, Kind } from '@/engine/types';
 import { HttpError } from '@/lib/api';
 import { MAX_BRAINS_PER_USER } from '@/lib/brains/limits';
 import type { CreateBrainInput, PatchBrainInput } from '@/lib/brains/schemas';
-import { sampleBrain } from '@/lib/sample/toolLibrary';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 export type Exec = Db | Tx;
@@ -40,37 +39,6 @@ export async function listBrains(db: Db, userId: string): Promise<BrainSummary[]
     .where(eq(brains.userId, userId))
     .groupBy(brains.id)
     .orderBy(desc(brains.number));
-}
-
-/** Gives a user with no brains the sample brain as number 1. Safe under concurrent calls. */
-export async function ensureSample(db: Db, userId: string): Promise<void> {
-  const existing = await db.select({ id: brains.id }).from(brains).where(eq(brains.userId, userId)).limit(1);
-  if (existing.length > 0) return;
-  const sample = sampleBrain('#1B1A17');
-  await db.transaction(async (tx) => {
-    const [brain] = await tx
-      .insert(brains)
-      .values({ userId, number: 1, title: sample.title, summary: sample.summary })
-      .onConflictDoNothing()
-      .returning({ id: brains.id });
-    if (!brain) return;
-    await tx.insert(nodes).values(
-      sample.nodes.map((n) => ({
-        brainId: brain.id,
-        id: n.id,
-        name: n.name,
-        note: n.note,
-        userNote: n.userNote,
-        kind: n.kind,
-        parentId: n.parent,
-        depth: n.depth,
-        color: n.color,
-        by: n.by,
-        critic: n.critic,
-        position: n.position,
-      })),
-    );
-  });
 }
 
 /** Throws 400 unless every node's parent is non-null and exists (in the brain already, or earlier in the same batch). */
