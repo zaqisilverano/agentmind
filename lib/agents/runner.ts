@@ -25,7 +25,7 @@ export interface RunnerDeps {
   scene: (event: AgentEvent) => Promise<void>;
   ink: () => string;
   /** True when the last sync call failed (the real sync layer reports failures through the store, not by rejecting). */
-  syncFailed?: () => boolean;
+  syncFailed: () => boolean;
   onMeta?: (meta: LlmMeta) => void;
   sleep?: (ms: number) => Promise<void>;
   rand?: () => number;
@@ -77,7 +77,8 @@ export class AgentRunner {
   start(brainId: string, rounds: number): Promise<void> {
     if (this.current) return this.current;
     this.paused = false;
-    const run = this.loop(brainId, rounds).finally(() => {
+    // Deferred a microtask so `current` is set before the loop emits its first event (handlers see running === true).
+    const run = Promise.resolve().then(() => this.loop(brainId, rounds)).finally(() => {
       this.current = null;
       this.emit('phase', null, null);
     });
@@ -152,9 +153,14 @@ export class AgentRunner {
 
         // Spawn first so the children burst from the agent, then prepare each arc before it exists in the brain.
         await deps.scene({ type: 'spawn', agent: agent.id, target: target.id });
-        for (const l of links) await deps.scene({ type: 'prepareLink', agent: agent.id, a: l.a, b: l.b });
+        for (const l of links) {
+          if (brain() === null) break;
+          await deps.scene({ type: 'prepareLink', agent: agent.id, a: l.a, b: l.b });
+        }
+        // applyRound patches whichever brain the store holds, so never call it after a switch (a pause alone still persists).
+        if (brain() === null) break;
         await deps.sync.applyRound({ round: r, nodes: children, links, log: entry });
-        if (deps.syncFailed?.()) throw new Error('Round not saved');
+        if (deps.syncFailed()) throw new Error('Round not saved');
         completed = r;
 
         const names = new Map((brain()?.nodes ?? before.nodes.concat(children)).map((n) => [n.id, n.name]));
@@ -245,7 +251,7 @@ export class AgentRunner {
     const synth: Takeaway = { path: pathTo(now.nodes, leaf.id), verdict: reply.data.verdict, brief: reply.data.brief };
     const entry: Omit<LogEntry, 'seq'> = { agent: 'strategist', text: synth.verdict, node: leaf.id, tag: 'Takeaway' };
     await deps.sync.setTakeaway(synth, entry);
-    if (deps.syncFailed?.()) throw new Error('Takeaway not saved');
+    if (deps.syncFailed()) throw new Error('Takeaway not saved');
     this.emit('log', { ...entry, seq: 0 });
     return true;
   }

@@ -23,6 +23,9 @@ function setup(opts: { links?: (target: string) => L[] } = {}) {
     metas: [] as LlmMeta[],
     clock: 1000,
     fail: false,
+    syncFail: false,
+    failApplyFlag: false,
+    failTakeawayFlag: false,
     leaf: 'b2c1',
     onTakeaway: () => {},
     onRound: (_n: number) => {},
@@ -53,15 +56,18 @@ function setup(opts: { links?: (target: string) => L[] } = {}) {
         brain.log.push(entry);
         h.rounds.push({ round: body.round, tag: body.log.tag, links: body.links.length, nodes: body.nodes.length });
         h.onApplied(body.round);
+        if (h.failApplyFlag) h.syncFail = true;
       },
       setTakeaway: async (synth, log) => {
         brain.synth = synth;
         brain.log.push({ ...log, seq: brain.log.length + 1 });
         h.takeaways.push({ path: synth.path, leaf: log.node });
+        if (h.failTakeawayFlag) h.syncFail = true;
       },
     },
     getBrain: () => h.current,
     scene: async (e) => { h.onScene(e); h.events.push(e); },
+    syncFailed: () => h.syncFail,
     ink: () => '#111',
     sleep: async () => {},
     rand: () => 0,
@@ -211,6 +217,65 @@ describe('AgentRunner', () => {
     expect(h.takeaways).toHaveLength(0);
     expect(h.emitted).not.toContain('finished');
     expect(types(h.events).at(-1)).toBe('done');
+  });
+
+  it('never calls applyRound when the brain is switched during the spawn hold', async () => {
+    const { h, runner } = setup();
+    h.onScene = (e) => { if (e.type === 'spawn') h.current = { ...h.brain, id: 'other' }; };
+    await runner.start('brain-1', 2);
+    expect(h.rounds).toHaveLength(0);
+    expect(h.brain.nodes.length).toBe(sampleBrain('#111').nodes.length);
+    expect(types(h.events)).toEqual(['plan', 'travel', 'think', 'spawn', 'done']);
+    expect(h.emitted).not.toContain('finished');
+  });
+
+  it('still persists the in-flight round when paused during spawn', async () => {
+    const { h, runner } = setup();
+    h.onScene = (e) => { if (e.type === 'spawn') runner.pause(); };
+    await runner.start('brain-1', 2);
+    expect(h.rounds.map((r) => r.round)).toEqual([1]);
+    expect(h.takeaways).toHaveLength(0);
+  });
+
+  it('syncFailed after applyRound emits error, pauses and stops', async () => {
+    const { h, runner } = setup();
+    h.failApplyFlag = true;
+    await runner.start('brain-1', 3);
+    expect(h.emitted.some((e) => e.startsWith('error:'))).toBe(true);
+    expect(h.emitted).not.toContain('finished');
+    expect(h.emitted.some((e) => e.startsWith('status:Paused'))).toBe(false);
+    expect(h.rounds).toHaveLength(1);
+    expect(h.takeaways).toHaveLength(0);
+    expect(types(h.events).filter((t) => t === 'plan')).toHaveLength(1);
+    expect(types(h.events).at(-1)).toBe('done');
+    expect(runner.running).toBe(false);
+  });
+
+  it('syncFailed after setTakeaway emits error and does not finish', async () => {
+    const { h, runner } = setup();
+    h.failTakeawayFlag = true;
+    await runner.start('brain-1', 1);
+    expect(h.takeaways).toHaveLength(1);
+    expect(h.emitted.some((e) => e.startsWith('error:'))).toBe(true);
+    expect(h.emitted).not.toContain('finished');
+    expect(types(h.events).at(-1)).toBe('done');
+    expect(runner.running).toBe(false);
+  });
+
+  it('is running before the first event, so a re-entrant start is a no-op', async () => {
+    const { runner } = setup();
+    let seen: boolean | null = null;
+    let again: Promise<void> | null = null;
+    let first: Promise<void> | null = null;
+    runner.on('phase', (p) => {
+      if (p !== 'plan' || seen !== null) return;
+      seen = runner.running;
+      again = runner.start('brain-1', 1);
+    });
+    first = runner.start('brain-1', 1);
+    await first;
+    expect(seen).toBe(true);
+    expect(again).toBe(first);
   });
 
   it('start while running returns the same promise', async () => {
