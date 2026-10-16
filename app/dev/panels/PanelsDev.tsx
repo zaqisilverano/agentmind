@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
-import type { AgentId, Brain } from '@/engine/types';
-import { apiClient } from '@/lib/apiClient';
+import type { AgentId, Brain, CrossLink, IdeaNode } from '@/engine/types';
+import { apiClient, type ApiClient, type LlmResult } from '@/lib/apiClient';
+import { configureController, type ControllerApi } from '@/lib/controller';
+import { fallback } from '@/lib/llm/fallback';
+import type { MapReplyOut } from '@/lib/llm/schemas';
 import { sampleBrain } from '@/lib/sample/toolLibrary';
 import { useStore } from '@/lib/store';
 import { configureSync } from '@/lib/sync';
@@ -42,22 +45,65 @@ const BRAINS: Record<string, Brain> = {
 
 declare global { interface Window { __store?: typeof useStore } }
 
-/** Hydrates the store with fixture brains (no network for brain switching) and renders the real shell. */
+const wait = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+const LATENCY = 150;
+const THINK = 400;
+const FALLBACK = { source: 'fallback' as const, attempts: 0 };
+
+/** Brain writes "succeed" after a short delay and answer with the store's copy, which sync already updated. */
+async function echo(): Promise<Brain> {
+  await wait(LATENCY);
+  const b = structuredClone(useStore.getState().brain as Brain);
+  BRAINS[b.id] = b;
+  return b;
+}
+
+const llm = async <T,>(data: T): Promise<LlmResult<T>> => {
+  await wait(THINK);
+  return { data, meta: FALLBACK };
+};
+
+/** No database here: brain routes are echoed locally and the LLM routes run the offline fallback in the browser. */
+const syncApi: ApiClient = {
+  ...apiClient,
+  getBrain: async (id: string) => { await wait(LATENCY); return structuredClone(BRAINS[id]); },
+  createBrain: async (body) => {
+    await wait(LATENCY);
+    const number = Object.keys(BRAINS).length + 1;
+    const now = new Date().toISOString();
+    const brain: Brain = { id: `dev-${number}`, number, title: body.title, summary: body.summary ?? '', round: 0, synth: null, nodes: body.nodes as IdeaNode[], links: (body.links ?? []) as CrossLink[], log: [], createdAt: now, updatedAt: now };
+    BRAINS[brain.id] = brain;
+    return structuredClone(brain);
+  },
+  deleteBrain: async (id: string) => { await wait(LATENCY); delete BRAINS[id]; return { ok: true as const }; },
+  patchBrain: echo, addNodes: echo, patchNode: echo, deleteNode: echo, addLinks: echo, applyRound: echo, setTakeaway: echo,
+};
+
+const controllerApi: ControllerApi = {
+  me: async () => ({
+    user: { id: '7f3c9a12-4b5e-4d6f-8a90-1b2c3d4e5f60' },
+    brains: Object.values(BRAINS).map(b => ({ id: b.id, number: b.number, title: b.title, nodeCount: b.nodes.length, updatedAt: b.updatedAt })),
+  }),
+  llm: {
+    map: (body) => llm(fallback.map(body.idea) as MapReplyOut),
+    expand: (body) => llm(fallback.expand(body.path, body.question)),
+    agentRound: (body) => llm(fallback.agentRound(body.agent, body.target as IdeaNode, body.nodes as IdeaNode[])),
+    takeaway: (body) => llm(fallback.takeaway(body.nodes as IdeaNode[], body.links as CrossLink[])),
+  },
+};
+
+/** Stubs the network, then renders the real shell; AppController loads the fixture user and opens the first brain. */
 export function PanelsDev() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    configureSync({ api: { ...apiClient, getBrain: async (id: string) => structuredClone(BRAINS[id]) } });
-    const store = useStore.getState();
-    store.hydrate({
-      user: { id: '7f3c9a12-4b5e-4d6f-8a90-1b2c3d4e5f60' },
-      brains: Object.values(BRAINS).map(b => ({ id: b.id, number: b.number, title: b.title, nodeCount: b.nodes.length, updatedAt: b.updatedAt })),
-    });
-    store.openBrain(structuredClone(BRAINS['dev-1']));
+    configureSync({ api: syncApi });
+    configureController({ api: controllerApi });
     window.__store = useStore;
     setReady(true);
     return () => {
       configureSync();
+      configureController();
       delete window.__store;
     };
   }, []);

@@ -10,7 +10,8 @@ import { SettingsMenu } from './SettingsMenu';
 const MODES: [Mode, string][] = [['constellation', 'Constellation'], ['orbit', 'Orbit'], ['terrain', 'Terrain']];
 const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 
-const SEGMENT = 'flex items-center gap-2 px-[14px] py-[10px] font-mono text-[11px] uppercase leading-[normal] tracking-[0.12em]';
+// Below 1000 px wide the segments tighten so the bar clears the left panel at the 900 px minimum.
+const SEGMENT = 'flex items-center gap-2 px-[14px] max-[1000px]:px-[10px] py-[10px] font-mono text-[11px] uppercase leading-[normal] tracking-[0.12em]';
 const TRIGGER = `${SEGMENT} border-r border-ink bg-panel text-ink data-[open=true]:bg-ink data-[open=true]:text-panel`;
 const KEY = 'text-muted group-data-[open=true]:text-faint';
 const caret = (open: boolean) => (open ? '▴' : '▾');

@@ -42,7 +42,14 @@ export function Atlas({ brain, mode, theme, selected, showPath, onPick, onReady,
     };
   }, []);
 
-  useEffect(() => { if (brain) sceneRef.current?.setBrain(brain); }, [brain]);
+  // A different brain (opened or newly mapped) grows in from the core; edits to the same brain keep node positions.
+  const shownId = useRef<string | null>(null);
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!brain || !scene) return;
+    scene.setBrain(brain, shownId.current !== brain.id ? { fresh: true } : {});
+    shownId.current = brain.id;
+  }, [brain]);
   useEffect(() => { sceneRef.current?.setMode(mode); }, [mode]);
   useEffect(() => { sceneRef.current?.setTheme(theme); }, [theme]);
   useEffect(() => { sceneRef.current?.select(selected); }, [selected]);

@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 import { download, slugify } from '@/lib/download';
 import { toJson } from '@/lib/export/json';
 import { toMarkdown } from '@/lib/export/markdown';
-import { useStore, type Provider, type Rounds } from '@/lib/store';
+import { providerText } from '@/lib/grow';
+import { useStore, type Rounds } from '@/lib/store';
 
 const ROUNDS: Rounds[] = [5, 10, 20];
 const DL = 'flex-1 cursor-pointer border border-ink bg-panel px-2 py-[9px] font-mono text-[10.5px] uppercase leading-[normal] tracking-[0.12em] text-ink hover:bg-ink hover:text-panel disabled:cursor-default disabled:opacity-40 disabled:pointer-events-none';
@@ -12,8 +13,6 @@ const DL = 'flex-1 cursor-pointer border border-ink bg-panel px-2 py-[9px] font-
 const Heading = ({ children }: { children: ReactNode }) => (
   <div className="text-[10px] uppercase tracking-[0.18em] text-muted">{children}</div>
 );
-
-const providerText = (p: Provider | null) => (!p ? '—' : p.source === 'fallback' ? 'offline fallback' : p.model ?? '—');
 
 export interface SettingsMenuProps {
   onDownloadHtml3d?: () => void;

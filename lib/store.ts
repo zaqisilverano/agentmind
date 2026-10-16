@@ -6,7 +6,9 @@ export type Phase = 'plan' | 'diverge' | 'connect' | 'takeaway';
 export type Rounds = 5 | 10 | 20;
 
 export interface RunState { active: boolean; paused: boolean; round: number; total: number; phase: Phase | null; agent: AgentId | null; status: string }
-export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean }
+/** `busy` marks an LLM call started from the UI (mapping a new brain or expanding a node); one at a time. */
+export type Busy = 'map' | 'expand' | null;
+export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy }
 export interface Provider { source: 'model' | 'fallback'; model?: string }
 export interface SyncError { label: string; retry: () => Promise<void> }
 
@@ -37,6 +39,7 @@ export interface Actions {
   setTakeawayOpen: (open: boolean) => void;
   setShowPath: (show: boolean) => void;
   setLogOpen: (open: boolean) => void;
+  setBusy: (busy: Busy) => void;
   setRun: (partial: Partial<RunState>) => void;
   setStatus: (text: string) => void;
   setProvider: (meta: Provider) => void;
@@ -54,7 +57,7 @@ export const initialState: State = {
   theme: 'atlas',
   settings: { rounds: 10 },
   run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '' },
-  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true },
+  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null },
   provider: null,
   syncError: null,
 };
@@ -73,6 +76,7 @@ export const useStore = create<State & Actions>()((set) => ({
   setTakeawayOpen: (takeawayOpen) => set((s) => ({ ui: { ...s.ui, takeawayOpen } })),
   setShowPath: (showPath) => set((s) => ({ ui: { ...s.ui, showPath } })),
   setLogOpen: (logOpen) => set((s) => ({ ui: { ...s.ui, logOpen } })),
+  setBusy: (busy) => set((s) => ({ ui: { ...s.ui, busy } })),
   setRun: (partial) => set((s) => ({ run: { ...s.run, ...partial } })),
   setStatus: (status) => set((s) => ({ run: { ...s.run, status } })),
   setProvider: (meta) => set({ provider: meta.model === undefined ? { source: meta.source } : { source: meta.source, model: meta.model } }),
