@@ -14,11 +14,12 @@ export const KIND_COLORS: Record<(typeof KINDS)[number], string> = { Problem: '#
 
 export interface MapReply { title: string; summary: string; branches: { name: string; kind: string; note: string; children: { name: string; note: string }[] }[] }
 
-/** Choreography events the agent runner sends to `AtlasScene.agent()`; each returns a promise the runner awaits. */
+/** Choreography events the agent runner sends to `AtlasScene.agent()`; each returns a promise the runner awaits. `prepareLink` goes out BEFORE the link is added to the brain: it resets that arc's reveal so it stays hidden until `link` draws it. */
 export type AgentEvent =
   | { type: 'plan'; agent: AgentId; target: string }
   | { type: 'travel'; agent: AgentId; path: string[] }
   | { type: 'think'; agent: AgentId; target: string; verb: string }
   | { type: 'spawn'; agent: AgentId; target: string }
+  | { type: 'prepareLink'; agent: AgentId; a: string; b: string }
   | { type: 'link'; agent: AgentId; a: string; b: string }
   | { type: 'done'; agent: AgentId };

@@ -289,7 +289,7 @@ export class AtlasScene {
   agent(event: AgentEvent): Promise<void> {
     const agents = this.agents, who = AGENTS.find(a => a.id === event.agent);
     if (!agents || !who) return this.unknown(agents ? 'agent ' + event.agent : null);
-    if (event.type !== 'spawn') this.spawnFrom = null;
+    if (event.type !== 'spawn' && event.type !== 'prepareLink') this.spawnFrom = null; // prepareLink sits between spawn and the children landing
     const name = (id: string) => this.names.get(id);
     const live = (id: string) => () => this.nodes?.positionOf(id);
     const label = (verb: string, id: string) => agents.setLabel(who.id, `${who.name} · ${verb} ${name(id)}`);
@@ -318,6 +318,9 @@ export class AtlasScene {
         agents.burst(who.id);
         return agents.wait(SPAWN_HOLD);
       }
+      case 'prepareLink':
+        this.nodes?.setReveal(event.a + '~' + event.b, 0);
+        return Promise.resolve();
       case 'link': {
         // Lines 268–275 and arcTo (209–211): reveal the arc while the agent rides it, then burst at the far end.
         if (!name(event.a) || !name(event.b)) return this.unknown('node ' + (name(event.a) ? event.b : event.a));

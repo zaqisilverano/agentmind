@@ -83,7 +83,7 @@ export function EngineDev() {
         const target = b.nodes.find(n => n.id === s.target) as IdeaNode;
         await push({ ...b, nodes: [...b.nodes, ...makeKids(target, s.kids, agent, THEMES[theme].ink)] });
         const link: CrossLink = { a: s.target, b: s.link, why: 'demo', by: s.agent };
-        scene.setReveal(`${link.a}~${link.b}`, 0);
+        await scene.agent({ type: 'prepareLink', agent: s.agent, a: link.a, b: link.b });
         await push({ ...brainRef.current, links: [...brainRef.current.links, link] });
         await scene.agent({ type: 'link', agent: s.agent, a: link.a, b: link.b });
         await scene.agent({ type: 'done', agent: s.agent });
