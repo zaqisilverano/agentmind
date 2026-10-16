@@ -1,0 +1,22 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Idea input that an LLM turns into a tree of branches and sub-ideas, rendered as a 3D map with Three.js.
+- Three layouts (Constellation, Orbit, Terrain) and three themes (Atlas, Observatory, Blueprint).
+- Five animated agents (Researcher, Builder, Customer, Skeptic, Strategist) that grow weak spots and link branches in rounds, then produce a Key takeaway and a highlighted strongest path.
+- Node card with editing, personal notes, expand, and delete for a node and its branches. Agent log, focus mode.
+- Persistence in Postgres under an anonymous signed cookie (`ab_uid`), with an ID display and Restore ID.
+- Sample "Tool Library" brain for first visits.
+- OpenAI-compatible LLM client with Zod-validated replies, one retry, and an offline fallback when no API key is set.
+- Per-user and per-IP rate limits on LLM routes.
+- Downloads as Markdown, JSON and a standalone 3D HTML file.
+- Docker Compose deployment with Caddy and automatic migrations, a Content Security Policy with per-request nonce, and a secrets pre-commit hook.
+- Vitest unit and route tests on pglite, and a prompt eval script (`npm run eval`).
+- GitHub Actions workflow with lint, typecheck, tests, build and gitleaks.
