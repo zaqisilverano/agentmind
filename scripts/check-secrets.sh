@@ -18,7 +18,8 @@ for f in $(git diff --cached --name-only --diff-filter=ACMR); do
 done
 
 # 2. Added lines matching secret patterns
-patterns='sk-[A-Za-z0-9_-]{10,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY|LLM_API_KEY=[^[:space:]]+'
+# sk- only at a word start, so words like risk-based-approach do not match.
+patterns='(^|[^A-Za-z0-9_])sk-[A-Za-z0-9_-]{10,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY|LLM_API_KEY=[^[:space:]]+'
 
 hits=$(git diff --cached -U0 --no-color --diff-filter=ACMR | awk '
   /^\+\+\+ / { file = substr($0, 7); if (file == "/dev/null") file = ""; next }
