@@ -53,16 +53,6 @@ function toRow(b: Brain): BrainListRow {
   return { id: b.id, number: b.number, title: b.title, nodeCount: b.nodes.length, updatedAt: b.updatedAt };
 }
 
-export async function createBrain(title: string, summary: string, nodes: IdeaNode[], links: CrossLink[] = []): Promise<Brain | null> {
-  let created: Brain | null = null;
-  await send('Create brain', () => api.createBrain({ title, summary, nodes, links }), (brain) => {
-    created = brain;
-    store().openBrain(brain);
-    useStore.setState((s) => ({ brains: [toRow(brain), ...s.brains.filter((r) => r.id !== brain.id)] }));
-  });
-  return created;
-}
-
 let selectToken = 0;
 
 /** Not optimistic: the brain is fetched first. Pauses any run straight away. */
@@ -72,6 +62,18 @@ export async function selectBrain(id: string): Promise<void> {
   await send('Open brain', () => api.getBrain(id), (brain) => {
     if (token === selectToken) store().openBrain(brain);
   });
+}
+
+export async function createBrain(title: string, summary: string, nodes: IdeaNode[], links: CrossLink[] = []): Promise<Brain | null> {
+  const token = ++selectToken;
+  store().setRun({ active: false, paused: true });
+  let created: Brain | null = null;
+  await send('Create brain', () => api.createBrain({ title, summary, nodes, links }), (brain) => {
+    created = brain;
+    useStore.setState((s) => ({ brains: [toRow(brain), ...s.brains.filter((r) => r.id !== brain.id)] }));
+    if (token === selectToken) store().openBrain(brain);
+  });
+  return created;
 }
 
 export async function deleteBrain(id: string): Promise<void> {

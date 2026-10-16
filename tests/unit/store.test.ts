@@ -199,6 +199,22 @@ describe('createBrain / selectBrain / deleteBrain', () => {
     expect(useStore.getState().brains.map((b) => b.id)).toEqual(['new', brain.id]);
   });
 
+  it('createBrain pauses a run and is not overwritten by a slower earlier selectBrain', async () => {
+    const other: Brain = { ...brain, id: 'other', title: 'Other' };
+    const created: Brain = { ...brain, id: 'new', number: 2, title: 'Fresh' };
+    let release!: (b: Brain) => void;
+    api.getBrain.mockReturnValue(new Promise<Brain>((r) => (release = r)));
+    api.createBrain.mockResolvedValue(created);
+    const sel = sync.selectBrain('other');
+    useStore.getState().setRun({ active: true, paused: false });
+    const cre = sync.createBrain('Fresh', 's', created.nodes);
+    expect(useStore.getState().run).toMatchObject({ active: false, paused: true });
+    await cre;
+    release(other);
+    await sel;
+    expect(useStore.getState().brain!.id).toBe('new');
+  });
+
   it('selectBrain pauses a run, clears the selection, and loads the brain', async () => {
     const other: Brain = { ...brain, id: 'other', title: 'Other' };
     api.getBrain.mockResolvedValue(other);

@@ -77,7 +77,7 @@ const brainPath = (id: string, tail = ''): string => `/api/brains/${encodeURICom
 
 export const apiClient = {
   me: () => data<MeResponse>('GET', '/api/me'),
-  restore: (id: string) => request('POST', '/api/me/restore', { id }) as Promise<{ ok: true }>,
+  restore: (id: string) => data<{ ok: true }>('POST', '/api/me/restore', { id }),
   health: () => request('GET', '/api/health') as Promise<{ ok: boolean; db: boolean }>,
   listBrains: () => data<BrainListRow[]>('GET', '/api/brains'),
   createBrain: (body: CreateBrainRequest) => data<Brain>('POST', '/api/brains', body),

@@ -32,6 +32,14 @@ describe('apiClient', () => {
     expect(await apiClient.llm.expand({ title: 't', summary: '', path: ['a'], existing: [] })).toEqual(env);
   });
 
+  it('unwraps the { data } envelope on restore, but returns health raw', async () => {
+    const f = vi.fn().mockReturnValueOnce(reply({ data: { ok: true } })).mockReturnValueOnce(reply({ ok: true, db: true }));
+    configureApiClient({ fetch: f as unknown as typeof fetch });
+    expect(await apiClient.restore('3b241101-e2bb-4255-8caf-4136c566a962')).toEqual({ ok: true });
+    expect(await apiClient.health()).toEqual({ ok: true, db: true });
+    expect(f.mock.calls[0][1].body).toBe(JSON.stringify({ id: '3b241101-e2bb-4255-8caf-4136c566a962' }));
+  });
+
   it('throws ApiError with the server message on non-2xx', async () => {
     configureApiClient({ fetch: vi.fn().mockReturnValue(reply({ error: 'unknown id' }, 404)) as unknown as typeof fetch });
     await expect(apiClient.restore('x')).rejects.toMatchObject({ name: 'ApiError', status: 404, message: 'unknown id' });
