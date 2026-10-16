@@ -16,13 +16,8 @@ const TRIGGER = `${SEGMENT} border-r border-ink bg-panel text-ink data-[open=tru
 const KEY = 'text-muted group-data-[open=true]:text-faint';
 const caret = (open: boolean) => (open ? '▴' : '▾');
 
-export interface ToolbarProps {
-  /** Task 19 supplies the 3D HTML export; until then the button is disabled. */
-  onDownloadHtml3d?: () => void;
-}
-
 /** Top-right segmented bar: View, Design, Settings dropdowns and the Focus button. */
-export function Toolbar({ onDownloadHtml3d }: ToolbarProps) {
+export function Toolbar() {
   const mode = useStore(s => s.mode);
   const theme = useStore(s => s.theme);
   const setMode = useStore(s => s.setMode);
@@ -58,7 +53,7 @@ export function Toolbar({ onDownloadHtml3d }: ToolbarProps) {
           ))}
         </Dropdown>
         <Dropdown id="settings" title="Rounds and downloads" triggerClassName={TRIGGER} menuClassName="w-[302px] max-w-[calc(100vw-86px)]" label={open => <>Settings {caret(open)}</>}>
-          <SettingsMenu onDownloadHtml3d={onDownloadHtml3d} />
+          <SettingsMenu />
         </Dropdown>
         <button
           type="button"

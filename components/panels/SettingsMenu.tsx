@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { download, slugify } from '@/lib/download';
 import { toJson } from '@/lib/export/json';
+import { downloadHtml3d } from '@/lib/export/html3dClient';
 import { toMarkdown } from '@/lib/export/markdown';
 import { providerText } from '@/lib/grow';
 import { useStore, type Rounds } from '@/lib/store';
@@ -14,12 +15,8 @@ const Heading = ({ children }: { children: ReactNode }) => (
   <div className="text-[10px] uppercase tracking-[0.18em] text-muted">{children}</div>
 );
 
-export interface SettingsMenuProps {
-  onDownloadHtml3d?: () => void;
-}
-
 /** Settings dropdown body: rounds per run, brain downloads, and which LLM answered last. */
-export function SettingsMenu({ onDownloadHtml3d }: SettingsMenuProps) {
+export function SettingsMenu() {
   const rounds = useStore(s => s.settings.rounds);
   const setRounds = useStore(s => s.setRounds);
   const provider = useStore(s => s.provider);
@@ -28,6 +25,11 @@ export function SettingsMenu({ onDownloadHtml3d }: SettingsMenuProps) {
   const save = (ext: string, mime: string, render: typeof toMarkdown) => {
     const brain = useStore.getState().brain;
     if (brain) download(`${slugify(brain.title)}.${ext}`, render(brain), mime);
+  };
+
+  const saveHtml3d = () => {
+    const { brain, theme, mode, setStatus } = useStore.getState();
+    if (brain) downloadHtml3d(brain, theme, mode).catch(() => setStatus('Could not build the 3D HTML export. Try again.'));
   };
 
   return (
@@ -53,7 +55,7 @@ export function SettingsMenu({ onDownloadHtml3d }: SettingsMenuProps) {
         <div className="flex gap-1.5">
           <button type="button" className={DL} disabled={!hasBrain} onClick={() => save('md', 'text/markdown', toMarkdown)}>Markdown</button>
           <button type="button" className={DL} disabled={!hasBrain} onClick={() => save('json', 'application/json', toJson)}>JSON</button>
-          <button type="button" className={DL} disabled={!hasBrain || !onDownloadHtml3d} onClick={onDownloadHtml3d}>3D HTML</button>
+          <button type="button" className={DL} disabled={!hasBrain} onClick={saveHtml3d}>3D HTML</button>
         </div>
       </div>
       <div className="flex items-baseline gap-3 px-[14px] py-3">
