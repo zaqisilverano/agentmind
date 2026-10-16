@@ -65,6 +65,13 @@ describe('grow', () => {
     expect(s.run.status).toMatch(/^\+4 on .* · offline fallback$/);
     expect(s.ui.busy).toBeNull();
   });
+  it('expandNode is refused while a run is active or still winding down', async () => {
+    useStore.getState().setRun({ active: true });
+    expect(await expandNode('b2')).toBe(false);
+    useStore.getState().setRun({ active: false, phase: 'connect' });
+    expect(await expandNode('b2')).toBe(false);
+    expect(llm.llm.expand).not.toHaveBeenCalled();
+  });
   it('mapIdea creates and opens a new brain', async () => {
     expect(await mapIdea('a tool library for renters')).toBe(true);
     const s = useStore.getState();
@@ -99,6 +106,14 @@ describe('controller', () => {
     expect(s.run).toMatchObject({ active: false, paused: false, phase: null, agent: null, round: brain.round + 5, total: brain.round + 5, status: 'Done · 5 rounds' });
     expect(s.ui.takeawayOpen).toBe(true);
     expect(s.ui.showPath).toBe(true);
+  });
+
+  it('a brain switch stops the run in the store at once', () => {
+    const c = createController(() => null);
+    useStore.getState().setRun({ active: true, paused: false, round: 3, total: 8 });
+    useStore.getState().openBrain({ ...brain, id: 'other' });
+    expect(useStore.getState().run).toMatchObject({ active: false, paused: true });
+    c.dispose();
   });
 
   it('clears a selection whose node disappears', () => {

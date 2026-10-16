@@ -22,6 +22,7 @@ export function NodeCard({ id }: { id: string }) {
   const nodes = useStore(s => s.brain?.nodes);
   const links = useStore(s => s.brain?.links);
   const busy = useStore(s => s.ui.busy);
+  const running = useStore(s => s.run.active || s.run.phase !== null);
   const select = useStore(s => s.select);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
@@ -116,11 +117,12 @@ export function NodeCard({ id }: { id: string }) {
       <div className="flex flex-none border-t border-ink">
         <button
           type="button"
-          disabled={busy !== null}
+          disabled={busy !== null || running}
+          title={running ? 'Agents are running' : undefined}
           onClick={() => void expandNode(id)}
-          className="flex-1 cursor-pointer bg-ink px-4 py-[13px] text-left font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] text-panel hover:bg-accent hover:text-on-accent disabled:cursor-default"
+          className="flex-1 cursor-pointer bg-ink px-4 py-[13px] text-left font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] text-panel hover:bg-accent hover:text-on-accent disabled:cursor-default disabled:bg-ink disabled:text-panel/50"
         >
-          {busy === 'expand' ? 'Expanding…' : 'Expand this node →'}
+          {busy === 'expand' ? 'Expanding…' : running ? 'Agents running…' : 'Expand this node →'}
         </button>
         {id !== 'n0' && <TwoStepDelete key={id} title="Delete node and its branches" onConfirm={remove} className="border-l border-ink" />}
       </div>

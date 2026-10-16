@@ -22,6 +22,8 @@ export interface Controller {
   startRun: () => void;
   /** Stops the run after the current step. */
   pause: () => void;
+  /** True while the runner's loop is still going, including the wind-down after `pause()`. */
+  readonly running: boolean;
   dispose: () => void;
 }
 
@@ -78,12 +80,17 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
       if (id !== brainId) {
         brainId = id;
         runner?.pause();
+        // At once, so the new brain never shows the old run's "Round x/total".
+        if (s.run.active || !s.run.paused) s.setRun({ active: false, paused: true });
       }
       if (s.selected !== null && !s.brain?.nodes.some((n) => n.id === s.selected)) s.select(null);
     }),
   );
 
   return {
+    get running() {
+      return runner?.running ?? false;
+    },
     startRun() {
       const s = store();
       const brain = s.brain;

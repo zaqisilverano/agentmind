@@ -28,6 +28,7 @@ export function InputBar() {
   const hasBrain = useStore(s => s.brain !== null);
   const active = useStore(s => s.run.active);
   const busy = useStore(s => s.ui.busy);
+  const running = useStore(s => s.run.active || s.run.phase !== null);
   const syncError = useStore(s => s.syncError);
   const status = useStatusText();
   const [text, setText] = useState('');
@@ -43,8 +44,8 @@ export function InputBar() {
     const idea = text.trim();
     if (!idea || busy) return;
     if (selected) {
-      setText('');
-      await expandNode(selected, idea);
+      if (running) return;
+      if (await expandNode(selected, idea)) setText('');
       return;
     }
     if (await mapIdea(idea)) setText('');
@@ -86,7 +87,13 @@ export function InputBar() {
           onKeyDown={e => { if (e.key === 'Enter') void submit(); }}
           className="min-w-0 flex-1 border-none bg-transparent px-4 py-[14px] font-serif text-[24px] text-ink outline-none placeholder:text-muted placeholder:italic disabled:opacity-60"
         />
-        <button type="button" disabled={busy !== null} onClick={() => void submit()} className={`${ACTION} bg-accent px-[22px] text-on-accent hover:bg-ink hover:text-panel`}>
+        <button
+          type="button"
+          disabled={busy !== null || (asking && running)}
+          title={asking && running ? 'Agents are running' : undefined}
+          onClick={() => void submit()}
+          className={`${ACTION} bg-accent px-[22px] text-on-accent hover:bg-ink hover:text-panel disabled:opacity-60`}
+        >
           {busy === 'map' ? 'Mapping…' : busy === 'expand' ? 'Growing…' : asking ? 'Grow →' : 'Map it →'}
         </button>
         <button

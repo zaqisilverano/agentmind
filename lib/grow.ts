@@ -11,6 +11,15 @@ const store = () => useStore.getState();
 /** "offline fallback" or the model name, for status lines and the Settings menu. */
 export const providerText = (p: Provider | LlmMeta | null): string => (!p ? '—' : p.source === 'fallback' ? 'offline fallback' : p.model ?? '—');
 
+/**
+ * A run (or its wind-down after Pause, while a phase is still set) owns the map: a user expand computed from another
+ * snapshot would race the agent's children on the same node.
+ */
+export const runBusy = (): boolean => {
+  const { run } = store();
+  return run.active || run.phase !== null || (getController()?.running ?? false);
+};
+
 const errorText = (e: unknown): string => (e instanceof TypeError ? 'network error' : e instanceof Error ? e.message : String(e));
 
 /**
@@ -78,7 +87,7 @@ export async function mapIdea(text: string): Promise<boolean> {
 export async function expandNode(id: string, question?: string): Promise<boolean> {
   const brain = store().brain;
   const node = brain?.nodes.find((n) => n.id === id);
-  if (!brain || !node || store().ui.busy) return false;
+  if (!brain || !node || store().ui.busy || runBusy()) return false;
   const q = question?.trim().slice(0, 300) || undefined;
   store().setBusy('expand');
   store().setStatus(q ? `Asking: ${q}…` : `Expanding ${node.name}…`);
