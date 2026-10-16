@@ -35,7 +35,7 @@ export function toMarkdown(brain: Brain): string {
       if (n.note) out.push('', n.note);
       out.push('');
     } else out.push(pad + '- **' + n.name + '**' + (n.note ? ' — ' + n.note : ''));
-    if (n.myNote) out.push(pad + '> My note: ' + oneLine(n.myNote), '');
+    if (n.myNote) out.push(pad + '  > My note: ' + oneLine(n.myNote));
     n.children.forEach(c => walk(c, lvl + 1));
     if (lvl === 0) out.push('');
   };
