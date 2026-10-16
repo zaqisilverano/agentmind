@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { generate } from '@/lib/llm/generate';
 
@@ -21,6 +21,7 @@ describe('generate', () => {
     expect(r.data).toEqual({ a: 0 });
     expect(r.meta.source).toBe('fallback');
     expect(r.meta.attempts).toBe(2);
+    expect(r.meta.error).toBe('invalid output');
   });
 
   it('falls back immediately without a key', async () => {
@@ -35,7 +36,7 @@ describe('generate', () => {
     const r = await generate(S, 's', 'u', () => ({ a: 0 }), { fetch: boom, env: envOk });
     expect(r.data).toEqual({ a: 0 });
     expect(r.meta).toMatchObject({ source: 'fallback', attempts: 1 });
-    expect(r.meta.error).toContain('network down');
+    expect(r.meta.error).toBe('provider error');
   });
 
   it('sends the issues in the retry message and the documented request shape', async () => {
@@ -64,6 +65,36 @@ describe('generate', () => {
     const r = await generate(S, 's', 'u', () => ({ a: 0 }), { fetch: f, env: envOk });
     expect(body).not.toHaveProperty('chat_template_kwargs');
     expect(r.meta).toMatchObject({ source: 'fallback', attempts: 1 });
-    expect(r.meta.error).toContain('500');
+    expect(r.meta.error).toBe('provider 500');
+  });
+
+  it('reports a timeout without upstream detail', async () => {
+    const slow = (async () => {
+      throw new DOMException('secret internals', 'TimeoutError');
+    }) as unknown as typeof fetch;
+    const r = await generate(S, 's', 'u', () => ({ a: 0 }), { fetch: slow, env: envOk });
+    expect(r.meta.error).toBe('timeout');
+  });
+
+  it('does not leak the upstream body into meta.error', async () => {
+    const f = (async () => new Response('upstream secret detail', { status: 502 })) as unknown as typeof fetch;
+    const r = await generate(S, 's', 'u', () => ({ a: 0 }), { fetch: f, env: envOk });
+    expect(JSON.stringify(r.meta)).not.toContain('secret');
+  });
+
+  it('calls a throwing fallback once and rejects with "fallback failed" (no key)', async () => {
+    const fb = vi.fn(() => {
+      throw new Error('boom');
+    });
+    await expect(generate(S, 's', 'u', fb, { fetch: fetchWith([]), env: { ...envOk, LLM_API_KEY: '' } })).rejects.toThrow(/^fallback failed: boom/);
+    expect(fb).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects with "fallback failed" when the fallback throws after a model failure', async () => {
+    const fb = vi.fn(() => {
+      throw new Error('boom');
+    });
+    await expect(generate(S, 's', 'u', fb, { fetch: fetchWith(['nope', 'nope']), env: envOk })).rejects.toThrow(/^fallback failed: boom/);
+    expect(fb).toHaveBeenCalledTimes(1);
   });
 });

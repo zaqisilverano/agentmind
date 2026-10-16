@@ -30,3 +30,9 @@ let limiter: RateLimiter | undefined;
 export function getLlmLimiter(): RateLimiter {
   return (limiter ??= new RateLimiter(getEnv().RATE_LIMIT_PER_HOUR));
 }
+
+let ipLimiter: RateLimiter | undefined;
+/** Separate limiter keyed by client IP, so dropping the cookie does not mint a fresh budget. */
+export function getIpLimiter(): RateLimiter {
+  return (ipLimiter ??= new RateLimiter(getEnv().RATE_LIMIT_PER_HOUR));
+}
