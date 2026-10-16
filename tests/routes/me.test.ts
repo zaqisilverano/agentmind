@@ -106,6 +106,19 @@ describe('POST /api/me/restore', () => {
 describe('GET /api/health', () => {
   it('reports db reachability', async () => {
     const res = await HEALTH();
+    expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, db: true });
+  });
+
+  it('503s with db: false when the database is unreachable', async () => {
+    const { setTestDb } = await import('@/db/client');
+    setTestDb({ execute: async () => { throw new Error('connection refused'); } } as never);
+    try {
+      const res = await HEALTH();
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ ok: true, db: false });
+    } finally {
+      setTestDb(db);
+    }
   });
 });

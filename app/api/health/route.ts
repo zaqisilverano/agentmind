@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 
+/** Liveness plus database reachability. 503 when Postgres is unreachable, so the Docker HEALTHCHECK fails. */
 export async function GET(): Promise<Response> {
   let db = false;
   try {
@@ -9,5 +10,5 @@ export async function GET(): Promise<Response> {
   } catch {
     db = false;
   }
-  return Response.json({ ok: true, db });
+  return Response.json({ ok: true, db }, { status: db ? 200 : 503 });
 }
