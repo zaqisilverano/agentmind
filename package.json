@@ -14,7 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx db/migrate.ts",
     "gen:theme": "tsx scripts/gen-theme-css.ts",
-    "eval": "tsx scripts/eval.ts"
+    "eval": "tsx --env-file-if-exists=.env scripts/eval.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
