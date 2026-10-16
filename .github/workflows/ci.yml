@@ -31,3 +31,28 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Builds the production image and smoke-tests it against Postgres: health, identity, and a write through the
+  # same-origin check with a proxy-style Host header. Same steps as running scripts/prod-smoke.sh locally.
+  image:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atlas -d atlas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image and smoke-test it
+        run: sh scripts/prod-smoke.sh
+        env:
+          SMOKE_IMAGE: ab:ci

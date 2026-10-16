@@ -4,6 +4,9 @@ node_modules
 .superpowers
 docs/reference/prototype/*.html
 tests
+# Test-runner configs reference tests/, which is not in the build context.
+playwright.config.ts
+vitest.config.mts
 playwright-report
 test-results
 coverage

@@ -151,8 +151,9 @@ middleware.ts    per-request CSP nonce
 - `npm test`: unit and route tests. Routes run on pglite (in-process Postgres with the real migrations), so no database is needed.
 - `npm run test:e2e`: Playwright. Starts its own dev server on port 3100 (no dev server needed, port 3000 can stay in use) and applies the migrations itself. Needs the dev Postgres: `docker compose -f docker/compose.dev.yml up -d`.
 - `npm run eval`: sends the prompts in `scripts/eval-prompts.json` to the configured provider and prints source, attempts and latency per call. It reads `.env` and is not part of CI.
+- `sh scripts/prod-smoke.sh`: builds the production Docker image, runs it against the dev Postgres (published on port 3200 on macOS) and checks health, the anonymous cookie and one write behind a proxy-style `Host` header.
 
-CI runs lint, typecheck, `npm test`, `npm run build` and gitleaks on every push and pull request.
+CI runs lint, typecheck, `npm test`, `npm run build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 16 service.
 
 ## Deployment
 

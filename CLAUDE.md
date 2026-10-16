@@ -13,7 +13,8 @@ engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, 
 - `npm run test:e2e` Playwright; starts its own server on :3100 and migrates; needs the dev Postgres (`docker compose -f docker/compose.dev.yml up -d`)
 - `npm run eval` prompt eval against the configured LLM provider (not in CI)
 - `npm run db:generate` · `npm run db:migrate` · `npm run build` (runs `prebuild`) · `npm run gen:theme` · `npm run build:export-layout`
-- CI (`.github/workflows/ci.yml`) runs lint, typecheck, test, build and gitleaks.
+- `sh scripts/prod-smoke.sh` builds the production image and smoke-tests it against the dev Postgres.
+- CI (`.github/workflows/ci.yml`) runs lint, typecheck, test, build, gitleaks and the production-image smoke test.
 
 ## Generated files
 `app/theme.generated.css` (from `engine/themes.ts`, `npm run gen:theme`) and `public/export/layout.js` (from `engine/layout.ts`, `npm run build:export-layout`) are generated. Never edit them by hand. Tests fail when the checked-in copies are stale, so regenerate and commit them after changing their sources.
