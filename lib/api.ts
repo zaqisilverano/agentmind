@@ -14,6 +14,13 @@ export class HttpError extends Error {
 export const json = (data: unknown, init?: ResponseInit): Response => Response.json({ data }, init);
 export const fail = (status: number, message: string): Response => Response.json({ error: message }, { status });
 
+/** CSRF guard for JSON POST routes: JSON content type, and same origin when an Origin header is sent. Throws HttpError. */
+export function requireJsonSameOrigin(req: Request): void {
+  if (!(req.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) throw new HttpError(415, 'expected application/json');
+  const origin = req.headers.get('origin');
+  if (origin !== null && origin !== new URL(req.url).origin) throw new HttpError(403, 'bad origin');
+}
+
 type Params = Record<string, string>;
 type Ctx = { params?: Promise<Params> };
 type Handler = (req: Request, ctx: { userId: string; params: Params }) => Promise<Response>;

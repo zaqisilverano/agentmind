@@ -48,17 +48,33 @@ describe('GET /api/me', () => {
 });
 
 describe('POST /api/me/restore', () => {
-  const post = (body: unknown) =>
-    POST(new Request('http://t/api/me/restore', { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }));
+  const post = (body: unknown, headers: Record<string, string> = {}) =>
+    POST(new Request('http://t/api/me/restore', { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json', ...headers } }));
 
   it('sets the cookie for an existing user', async () => {
     const [u] = await db.select().from(users).limit(1);
-    const res = await post({ id: u.id });
+    const res = await post({ id: u.id }, { origin: 'http://t' });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ data: { ok: true } });
     const { verify } = await import('@/lib/identity');
     const value = res.headers.get('set-cookie')!.split(';')[0].slice('ab_uid='.length);
     expect(verify(value, process.env.COOKIE_SECRET!)).toBe(u.id);
+  });
+
+  it('415s without a JSON content type and sets no cookie', async () => {
+    const [u] = await db.select().from(users).limit(1);
+    const res = await POST(new Request('http://t/api/me/restore', { method: 'POST', body: JSON.stringify({ id: u.id }), headers: { 'content-type': 'text/plain' } }));
+    expect(res.status).toBe(415);
+    expect(await res.json()).toEqual({ error: 'expected application/json' });
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('403s on a cross-origin request and sets no cookie', async () => {
+    const [u] = await db.select().from(users).limit(1);
+    const res = await post({ id: u.id }, { origin: 'https://evil.example' });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'bad origin' });
+    expect(res.headers.get('set-cookie')).toBeNull();
   });
 
   it('404s for an unknown id', async () => {
