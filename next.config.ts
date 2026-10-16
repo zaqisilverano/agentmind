@@ -3,6 +3,8 @@ import { securityHeaders } from "./lib/securityHeaders";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // `next lint` and the build lint only app/, components/ and lib/ by default; the boundary rule also covers engine/.
+  eslint: { dirs: ["app", "components", "lib", "engine", "db", "scripts", "tests"] },
   async headers() {
     const env = process.env.NODE_ENV === "production" ? "production" : "development";
     const all = securityHeaders(env);

@@ -1,7 +1,7 @@
 import { fail, withUser } from '@/lib/api';
 import { clientIp } from '@/lib/clientIp';
 import { getIpLimiter, getLlmLimiter } from '@/lib/rateLimit';
-import type { GenerateMeta } from './generate';
+import type { GenerateMeta } from '@/lib/llm/generate';
 
 type Handler = (req: Request) => Promise<{ data: unknown; meta: GenerateMeta }>;
 

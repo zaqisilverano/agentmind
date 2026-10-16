@@ -3,7 +3,7 @@ import { TakeawayBody } from '@/lib/llm/bodies';
 import { fallback } from '@/lib/llm/fallback';
 import { generate } from '@/lib/llm/generate';
 import { PROMPTS } from '@/lib/llm/prompts';
-import { llmRoute } from '@/lib/llm/route';
+import { llmRoute } from '@/lib/llmRoute';
 import { TakeawayReplySchema } from '@/lib/llm/schemas';
 
 export const POST = llmRoute(async (req) => {
