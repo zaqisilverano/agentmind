@@ -22,7 +22,7 @@ export function requireJsonSameOrigin(req: Request): void {
 }
 
 type Params = Record<string, string>;
-type Ctx = { params?: Promise<Params> };
+type Ctx = { params: Promise<Params> };
 type Handler = (req: Request, ctx: { userId: string; params: Params }) => Promise<Response>;
 
 /** Maps thrown ZodError / HttpError / anything else onto JSON error responses. */
@@ -37,11 +37,11 @@ export async function guard(run: () => Promise<Response>): Promise<Response> {
   }
 }
 
-export function withUser(handler: Handler) {
+export function withUser(handler: Handler): { (req: Request): Promise<Response>; (req: Request, ctx: Ctx): Promise<Response> } {
   return (req: Request, ctx?: Ctx): Promise<Response> =>
     guard(async () => {
       const { userId, setCookie } = await requireUser(req);
-      const params = (await ctx?.params) ?? {};
+      const params = ctx?.params ? await ctx.params : {};
       const res = await handler(req, { userId, params });
       if (!setCookie) return res;
       const headers = new Headers(res.headers);
