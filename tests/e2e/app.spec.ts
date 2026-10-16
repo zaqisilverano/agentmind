@@ -161,11 +161,13 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
     await expect(toolbar.getByRole('button', { name: '5', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('Escape');
 
+    const entries = async () => Number((await agentLog.getByText(/\d+ entries/).textContent())?.match(/\d+/)?.[0] ?? 0);
+    const before = await entries();
+    await expect(leftPanel.getByText('Key takeaway')).toBeHidden();
+
     await inputBar.getByRole('button', { name: /Run agents/ }).click();
     await expect(inputBar.getByRole('button', { name: /Pause/ })).toBeVisible();
-    await expect
-      .poll(async () => Number((await agentLog.getByText(/\d+ entries/).textContent())?.match(/\d+/)?.[0] ?? 0), { timeout: 90_000 })
-      .toBeGreaterThanOrEqual(5);
+    await expect.poll(entries, { timeout: 90_000 }).toBeGreaterThanOrEqual(before + 5);
     await expect(leftPanel.getByText('Key takeaway')).toBeVisible({ timeout: 90_000 });
     await expect(inputBar.getByRole('button', { name: /Run agents/ })).toBeVisible({ timeout: 30_000 });
   });
