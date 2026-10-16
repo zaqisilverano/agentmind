@@ -49,3 +49,12 @@ export function withUser(handler: Handler) {
       return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
     });
 }
+
+/** Parses a JSON request body with a Zod schema, after the CSRF guard. Throws HttpError / ZodError. */
+export async function readBody<T>(req: Request, schema: { parse(v: unknown): T }): Promise<T> {
+  requireJsonSameOrigin(req);
+  const raw: unknown = await req.json().catch(() => {
+    throw new HttpError(400, 'invalid JSON body');
+  });
+  return schema.parse(raw);
+}
