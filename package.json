@@ -6,6 +6,7 @@
     "dev": "next dev",
     "prebuild": "tsx scripts/build-export-layout.ts",
     "build": "next build",
+    "build:migrate": "esbuild db/migrate.ts --bundle --platform=node --format=esm --outfile=.next/standalone/db/migrate.mjs && cp -R db/migrations .next/standalone/db/",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

@@ -1,0 +1,8 @@
+{$DOMAIN} {
+	encode gzip zstd
+	reverse_proxy app:3000 {
+		# Overwrite, do not append: the app rate limiter trusts the first value.
+		header_up X-Forwarded-For {client_ip}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

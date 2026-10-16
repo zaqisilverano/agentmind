@@ -1,0 +1,53 @@
+# Production stack. Run from the repo root, passing the root .env explicitly (compose reads
+# variable interpolation such as ${DOMAIN} from the compose file's directory by default):
+#   docker compose --env-file .env -f docker/compose.yml up -d --build
+# Needs a .env at the repo root (copy .env.example). Under compose, DATABASE_URL must be
+#   postgres://atlas:atlas@db:5432/atlas
+# and COOKIE_SECRET must be changed from the example value.
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file: ../.env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-atlas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atlas}
+      POSTGRES_DB: ${POSTGRES_DB:-atlas}
+    volumes:
+      - ab_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ab_caddy_data:/data
+      - ab_caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  ab_pg:
+  ab_caddy_data:
+  ab_caddy_config:

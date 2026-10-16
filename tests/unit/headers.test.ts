@@ -1,0 +1,41 @@
+import { describe, expect, it } from 'vitest';
+import { csp, securityHeaders } from '@/lib/securityHeaders';
+
+const get = (env: 'production' | 'development', key: string) =>
+  securityHeaders(env).find((h) => h.key === key)?.value ?? '';
+
+describe('securityHeaders', () => {
+  it('production CSP is strict', () => {
+    const csp = get('production', 'Content-Security-Policy');
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).not.toContain('unsafe-eval');
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+    expect(csp).toContain("connect-src 'self'");
+    expect(csp).not.toContain('ws:');
+  });
+
+  it('nonce CSP for pages adds the nonce and no unsafe-inline or unsafe-eval', () => {
+    const p = csp('production', 'abc123');
+    expect(p).toContain("script-src 'self' 'nonce-abc123' 'strict-dynamic'");
+    expect(p).not.toContain('unsafe-eval');
+    expect(p).not.toMatch(/script-src[^;]*unsafe-inline/);
+    expect(p).toContain("frame-ancestors 'none'");
+  });
+
+  it('development CSP allows what Next dev needs', () => {
+    const csp = get('development', 'Content-Security-Policy');
+    expect(csp).toContain('unsafe-eval');
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).toContain('ws:');
+  });
+
+  it('sets the fixed headers in both environments', () => {
+    for (const env of ['production', 'development'] as const) {
+      expect(get(env, 'Referrer-Policy')).toBe('no-referrer');
+      expect(get(env, 'X-Content-Type-Options')).toBe('nosniff');
+      expect(get(env, 'X-Frame-Options')).toBe('DENY');
+      expect(get(env, 'Permissions-Policy')).toBe('camera=(), microphone=(), geolocation=()');
+    }
+  });
+});

@@ -15,6 +15,9 @@ const mono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 });
 
+// Dynamic so every response carries a fresh CSP nonce (see middleware.ts).
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Agentic Brainstorm',
   description: 'Type an idea. Agents grow it into a 3D map.',
