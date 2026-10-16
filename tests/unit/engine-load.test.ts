@@ -111,6 +111,23 @@ describe('engine modules load', () => {
     labels.dispose();
   });
 
+  it('the core label text takes the theme onAccent colour, also after recolor', () => {
+    const layer = document.createElement('div');
+    const labels = createLabels(layer, THEMES.atlas);
+    const nodes = sampleBrain('#1B1A17').nodes.slice(0, 1);
+    labels.sync(nodes);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+    camera.position.set(15, 9, 18);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const at = () => ({ x: 0, y: 0, z: 0, r: 0.85, s: 1 });
+    const core = layer.querySelector('div.atlas-label[data-depth="0"]') as HTMLElement;
+    labels.recolor({ ...THEMES.atlas, onAccent: '#123456' });
+    labels.update(camera, at, null, null, 800, 600);
+    expect(core.style.color).toBe('rgb(18, 52, 86)');
+    labels.dispose();
+  });
+
   it('setBrain(null) is accepted before mount, and a brain set afterwards still works', () => {
     const scene = new AtlasScene({ theme: 'atlas', mode: 'constellation' });
     expect(() => scene.setBrain(null)).not.toThrow();

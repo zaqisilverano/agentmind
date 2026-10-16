@@ -24,7 +24,6 @@ export interface Labels {
 interface Label { node: IdeaNode; el: HTMLDivElement; key: string; w: number; h: number }
 
 // Prototype numbers (idea-atlas-agents.prototype.js lines 566–573 and 750–764).
-const CORE_TEXT = '#1B1A17';
 const BASE = 'position:absolute;left:0;top:0;white-space:nowrap;will-change:transform;';
 const SERIF = 'var(--font-serif)', MONO = 'var(--font-mono)';
 const FALLBACK_W = 80, FALLBACK_H = 16;
@@ -115,7 +114,7 @@ export function createLabels(layer: HTMLElement, theme: Theme): Labels {
         if (boxes.some(b => bx < b[2] && bx + bw > b[0] && by < b[3] && by + bh > b[1])) op = n.depth >= 2 ? 0 : op * BRANCH_COLLIDE;
         else boxes.push([bx - 4, by - 2, bx + bw + 4, by + bh + 2]);
         el.style.opacity = (op * Math.min(1, a.s * 1.5)).toFixed(2);
-        el.style.color = n.depth === 0 ? CORE_TEXT : hot?.has(n.id) ? t.hot : t.ink;
+        el.style.color = n.depth === 0 ? t.onAccent : hot?.has(n.id) ? t.hot : t.ink;
       }
     },
 
