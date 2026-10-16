@@ -207,6 +207,39 @@ describe('brain routes', () => {
     expect((await call(one.PATCH, 'PATCH', `/api/brains/${id}`, { title: '' }, cookie, id)).status).toBe(400);
   });
 
+  describe('same-origin check behind a proxy / standalone bind address', () => {
+    const create = (cookie: string, headers: Record<string, string>) =>
+      list.POST(new Request('http://0.0.0.0:3000/api/brains', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie, ...headers },
+        body: JSON.stringify({ title: 'Proxied', nodes: [node('n0', null, 0)] }),
+      }));
+
+    it('accepts an Origin that matches the Host header even when req.url carries the bind address', async () => {
+      const cookie = await asUser();
+      const res = await create(cookie, { host: 'brainstorm.example.com', origin: 'https://brainstorm.example.com' });
+      expect(res.status).toBe(200);
+      expect((await res.json()).data.title).toBe('Proxied');
+    });
+
+    it('prefers X-Forwarded-Host over Host', async () => {
+      const cookie = await asUser();
+      const ok = await create(cookie, { host: 'app:3000', 'x-forwarded-host': 'brainstorm.example.com', origin: 'https://brainstorm.example.com' });
+      expect(ok.status).toBe(200);
+      const bad = await create(cookie, { host: 'brainstorm.example.com', 'x-forwarded-host': 'other.example.com', origin: 'https://brainstorm.example.com' });
+      expect(bad.status).toBe(403);
+    });
+
+    it('403s a mismatched host, an Origin of null and an unparsable Origin', async () => {
+      const cookie = await asUser();
+      for (const origin of ['https://evil.example', 'null', 'not a url']) {
+        const res = await create(cookie, { host: 'brainstorm.example.com', origin });
+        expect(res.status).toBe(403);
+        expect(await res.json()).toEqual({ error: 'bad origin' });
+      }
+    });
+  });
+
   it('413s a body over 256 KB and 400s a round with more than 200 nodes', async () => {
     const cookie = await asUser();
     const big = await call(list.POST, 'POST', '/api/brains', { title: 'x', summary: 'y'.repeat(300_000), nodes: [node('n0', null, 0)] }, cookie);

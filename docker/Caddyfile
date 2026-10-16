@@ -4,5 +4,7 @@
 		# Overwrite, do not append: the app rate limiter trusts the first value.
 		header_up X-Forwarded-For {client_ip}
 		header_up X-Forwarded-Proto {scheme}
+		# The app's same-origin check compares Origin to this host.
+		header_up X-Forwarded-Host {host}
 	}
 }
