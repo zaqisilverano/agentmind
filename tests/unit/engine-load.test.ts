@@ -6,15 +6,27 @@ import { THEMES } from '@/engine/themes';
 import { GROUND_Y } from '@/engine/layout';
 import { createNodeGraph } from '@/engine/nodes';
 import { createLabels } from '@/engine/labels';
+import { createAgents } from '@/engine/agents';
 import { sampleBrain } from '@/lib/sample/toolLibrary';
 import * as THREE from 'three';
 
 describe('engine modules load', () => {
   it('exposes the AtlasScene API', () => {
     expect(typeof AtlasScene).toBe('function');
-    for (const m of ['mount', 'dispose', 'setTheme', 'setMode', 'onFrame', 'setAutoRotate', 'setBrain', 'select', 'setShowPath', 'onPick', 'positionOf', 'targetOf'] as const) {
+    for (const m of ['mount', 'dispose', 'setTheme', 'setMode', 'onFrame', 'setAutoRotate', 'setBrain', 'select', 'setShowPath', 'onPick', 'positionOf', 'targetOf', 'agent', 'setReveal', 'arcPoint'] as const) {
       expect(AtlasScene.prototype[m]).toBeTypeOf('function');
     }
+  });
+
+  it('exposes createAgents', () => {
+    expect(createAgents).toBeTypeOf('function');
+  });
+
+  it('agent events resolve at once before mount', async () => {
+    const scene = new AtlasScene({ theme: 'atlas', mode: 'constellation' });
+    await expect(scene.agent({ type: 'plan', agent: 'researcher', target: 'n0' })).resolves.toBeUndefined();
+    await expect(scene.agent({ type: 'done', agent: 'researcher' })).resolves.toBeUndefined();
+    scene.dispose();
   });
 
   it('exposes createGround', () => {

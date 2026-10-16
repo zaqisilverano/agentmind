@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { ARC_MS, createAgents, type Agents } from '@/engine/agents';
 import { createGround, type Ground } from '@/engine/ground';
 import { createLabels, type Labels } from '@/engine/labels';
 import { buildPeaks, heightAt, type Vec3 } from '@/engine/layout';
 import { createNodeGraph, type NodeGraph } from '@/engine/nodes';
 import { THEMES } from '@/engine/themes';
-import type { Brain, Mode, ThemeId } from '@/engine/types';
+import type { AgentEvent, Brain, Mode, ThemeId } from '@/engine/types';
+import { AGENTS } from '@/lib/agents/roster';
 
 export type FrameCallback = (dt: number, now: number) => void;
 export type PickCallback = (id: string | null) => void;
@@ -26,10 +28,11 @@ const CAMERA_START: [number, number, number] = [15, 9, 18];
 const DAMPING = 0.06, MIN_DISTANCE = 5, MAX_DISTANCE = 48, AUTO_ROTATE_SPEED = 0.35;
 const MAX_DT = 100;
 const LAG = 260, FOCUS_RATE = 0.6, CLICK_SLOP = 5; // tick line 739, picking line 535
+const CORE = 'n0', SPAWN_HOLD = 400;
 
 /**
  * Scene lifecycle: renderer, camera, controls, fog, animation loop, resize and dispose.
- * Owns the node graph and label overlay (Task 11); agents plug in through onFrame() and `three` (Task 12).
+ * Owns the node graph, label overlay (Task 11) and the agent characters (Task 12), driven through agent(event).
  */
 export class AtlasScene {
   private theme: ThemeId;
@@ -53,6 +56,13 @@ export class AtlasScene {
   private width = 1;
   private height = 1;
   private unlisten: (() => void) | null = null;
+  private agents: Agents | null = null;
+  private names = new Map<string, string>();
+  private warned = new Set<string>();
+  /** True while any agent is on screen; auto-rotate stays off until the last one has shrunk away. */
+  private running = false;
+  /** Where new nodes spawn during a run: the agent's position at its last spawn (prototype line 246). */
+  private spawnFrom: Vec3 | null = null;
 
   constructor(opts: { theme: ThemeId; mode: Mode }) {
     this.theme = opts.theme;
@@ -100,6 +110,7 @@ export class AtlasScene {
     this.ground = createGround({ scene }, theme, this.mode);
     this.nodes = createNodeGraph({ scene, camera }, theme, { surfaceY: (x, z) => this.ground?.surfaceY(x, z) ?? 0 });
     this.labels = createLabels(labelLayer, theme);
+    this.agents = createAgents({ scene, camera }, agentLabelLayer, AGENTS, theme);
     this.nodes.select(this.selected);
     if (this.brain) this.applyBrain(!this.shown, null);
     this.listen(el, renderer.domElement, camera);
@@ -108,6 +119,7 @@ export class AtlasScene {
       const w = el.clientWidth, h = el.clientHeight;
       this.width = w; this.height = h;
       renderer.setSize(w, h, false);
+      this.agents?.setSize(w, h);
       camera.aspect = w / Math.max(1, h);
       camera.updateProjectionMatrix();
     };
@@ -119,7 +131,7 @@ export class AtlasScene {
     renderer.setAnimationLoop(this.tick);
   }
 
-  // tick, line 628 onward. Order: ground → nodes → labels → onFrame subscribers → controls → render.
+  // tick, line 628 onward. Order: ground → nodes → labels → agents → onFrame subscribers → controls → render.
   private tick = (now: number): void => {
     const t = this._three;
     if (!t || !this.ground) return;
@@ -130,10 +142,12 @@ export class AtlasScene {
     nodes.layoutTick(this.mode, now, dt);
     const focus = nodes.focus();
     if (focus) t.controls.target.lerp(focus, (1 - Math.exp(-dt / LAG)) * FOCUS_RATE);
-    t.controls.autoRotate = this.autoRotate && !this.selected;
+    this.running = this.agents!.active();
+    t.controls.autoRotate = this.autoRotate && !this.selected && !this.running;
     // Labels project with last frame's camera matrices (one-frame lag; the camera moves slowly).
     this.labels!.update(t.camera, id => nodes.anchorOf(id), this.selected, nodes.related(this.selected),
       this.width, this.height, nodes.hotIds());
+    this.agents!.tick(dt, now, t.camera);
     for (const cb of this.subscribers.slice()) cb(dt, now);
     t.controls.update();
     t.renderer.render(t.scene, t.camera);
@@ -202,7 +216,8 @@ export class AtlasScene {
    */
   setBrain(brain: Brain, opts: { fresh?: boolean; spawnFrom?: Vec3 | null } = {}): void {
     this.brain = brain;
-    this.applyBrain(opts.fresh ?? !this.shown, opts.spawnFrom ?? null);
+    this.names = new Map(brain.nodes.map(n => [n.id, n.name]));
+    this.applyBrain(opts.fresh ?? !this.shown, opts.spawnFrom ?? this.spawnFrom);
   }
 
   /** Select a node (or clear). Auto-rotate pauses while something is selected; the camera eases toward it. */
@@ -248,12 +263,82 @@ export class AtlasScene {
     this.ground.recolor(theme);
     this.nodes?.recolor(theme);
     this.labels?.recolor(theme);
+    this.agents?.recolor(theme);
   }
 
-  /** Allow auto-rotate (the caller turns it off while a run is active). It only spins while nothing is selected. */
+  /** Allow auto-rotate. It only spins while nothing is selected and no agent is on screen. */
   setAutoRotate(on: boolean): void {
     this.autoRotate = on;
-    if (this._three) this._three.controls.autoRotate = on && !this.selected;
+    if (this._three) this._three.controls.autoRotate = on && !this.selected && !this.running;
+  }
+
+  /** Cross-link reveal progress (0..1) for the arc keyed `a~b`; null shows it whole. */
+  setReveal(key: string, progress: number | null): void {
+    this.nodes?.setReveal(key, progress);
+  }
+
+  /** Point at t ∈ [0, 1] along the visible cross-link arc keyed `a~b`. */
+  arcPoint(key: string, t: number): Vec3 | undefined {
+    return this.nodes?.arcPoint(key, t);
+  }
+
+  /**
+   * Agent choreography (prototype agentRound, lines 218–345). Each promise resolves from the frame loop, or at once
+   * before mount, after dispose, and for unknown agent or node ids (with one console.warn per id).
+   */
+  agent(event: AgentEvent): Promise<void> {
+    const agents = this.agents, who = AGENTS.find(a => a.id === event.agent);
+    if (!agents || !who) return this.unknown(agents ? 'agent ' + event.agent : null);
+    if (event.type !== 'spawn') this.spawnFrom = null;
+    const name = (id: string) => this.names.get(id);
+    const live = (id: string) => () => this.nodes?.positionOf(id);
+    const label = (verb: string, id: string) => agents.setLabel(who.id, `${who.name} · ${verb} ${name(id)}`);
+    switch (event.type) {
+      case 'plan': {
+        if (!name(event.target) || !name(CORE)) return this.unknown('node ' + (name(CORE) ? event.target : CORE));
+        label('eyeing', event.target);
+        return agents.show(who.id, live(CORE));
+      }
+      case 'travel': {
+        const missing = event.path.find(id => !name(id));
+        if (missing !== undefined) return this.unknown('node ' + missing);
+        return agents.walk(who.id, event.path.map(live));
+      }
+      case 'think': {
+        if (!name(event.target)) return this.unknown('node ' + event.target);
+        label(event.verb, event.target);
+        agents.think(who.id, true);
+        return Promise.resolve();
+      }
+      case 'spawn': {
+        if (!name(event.target)) return this.unknown('node ' + event.target);
+        // Lines 244–248: bubble off, children spawn at the agent, burst and jump; the hold lets the stagger start.
+        agents.think(who.id, false);
+        this.spawnFrom = agents.positionOf(who.id) ?? null;
+        agents.burst(who.id);
+        return agents.wait(SPAWN_HOLD);
+      }
+      case 'link': {
+        // Lines 268–275 and arcTo (209–211): reveal the arc while the agent rides it, then burst at the far end.
+        if (!name(event.a) || !name(event.b)) return this.unknown('node ' + (name(event.a) ? event.b : event.a));
+        const key = event.a + '~' + event.b;
+        label('linking from', event.a);
+        agents.think(who.id, false);
+        this.nodes?.setReveal(key, 0);
+        return agents.ride(who.id, t => this.nodes?.arcPoint(key, t), ARC_MS, pr => this.nodes?.setReveal(key, pr), live(event.b))
+          .then(() => { this.nodes?.setReveal(key, null); agents.burst(who.id); });
+      }
+      case 'done':
+        return agents.hide(who.id);
+    }
+  }
+
+  private unknown(what: string | null): Promise<void> {
+    if (what && !this.warned.has(what)) {
+      this.warned.add(what);
+      console.warn(`AtlasScene.agent: unknown ${what}; event skipped`);
+    }
+    return Promise.resolve();
   }
 
   // componentWillUnmount, lines 402–408.
@@ -266,6 +351,10 @@ export class AtlasScene {
     this.unlisten?.();
     this.unlisten = null;
     this.down = null;
+    this.agents?.dispose(); // resolves every pending agent promise so the runner never hangs
+    this.agents = null;
+    this.running = false;
+    this.spawnFrom = null;
     this.labels?.dispose();
     this.labels = null;
     this.nodes?.dispose();

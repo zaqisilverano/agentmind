@@ -13,3 +13,12 @@ export const KINDS = ['Problem', 'People', 'Mechanism', 'Value', 'Risk', 'Next s
 export const KIND_COLORS: Record<(typeof KINDS)[number], string> = { Problem: '#E0482B', People: '#2F5BD8', Mechanism: '#3E8E5A', Value: '#D49A1E', Risk: '#9B3FB5', 'Next step': '#1A8C8C' };
 
 export interface MapReply { title: string; summary: string; branches: { name: string; kind: string; note: string; children: { name: string; note: string }[] }[] }
+
+/** Choreography events the agent runner sends to `AtlasScene.agent()`; each returns a promise the runner awaits. */
+export type AgentEvent =
+  | { type: 'plan'; agent: AgentId; target: string }
+  | { type: 'travel'; agent: AgentId; path: string[] }
+  | { type: 'think'; agent: AgentId; target: string; verb: string }
+  | { type: 'spawn'; agent: AgentId; target: string }
+  | { type: 'link'; agent: AgentId; a: string; b: string }
+  | { type: 'done'; agent: AgentId };
