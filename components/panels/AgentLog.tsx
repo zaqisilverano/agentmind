@@ -16,7 +16,7 @@ export function AgentLog() {
   const entries = (log ?? []).slice(-MAX_SHOWN).reverse();
 
   return (
-    <Panel className="fixed top-[100px] right-11 z-[2] flex max-h-[min(560px,calc(100%-254px))] min-h-0 w-[302px] max-w-[calc(100%-88px)] flex-col">
+    <Panel data-testid="agent-log" className="fixed top-[100px] right-11 z-[2] flex max-h-[min(560px,calc(100%-254px))] min-h-0 w-[302px] max-w-[calc(100%-88px)] flex-col">
       <div className="flex flex-none items-center gap-[10px] border-b border-ink px-[14px] py-[10px]">
         <span className="flex-1 text-[10.5px] uppercase tracking-[0.16em]">Agent log</span>
         <span className="text-[10px] text-muted">{log?.length ?? 0} entries</span>

@@ -33,7 +33,7 @@ export function LeftPanel() {
   }
 
   return (
-    <aside className="fixed top-[26px] bottom-[136px] left-7 z-[2] flex w-[333px] max-w-[calc(100%-55px)] flex-col gap-[22px] overflow-y-auto border-r border-b border-r-rule2 border-b-rule bg-bg px-4 pt-[14px] pb-4">
+    <aside data-testid="left-panel" className="fixed top-[26px] bottom-[136px] left-7 z-[2] flex w-[333px] max-w-[calc(100%-55px)] flex-col gap-[22px] overflow-y-auto border-r border-b border-r-rule2 border-b-rule bg-bg px-4 pt-[14px] pb-4">
       <div className="flex flex-none flex-col gap-1.5">
         <BrainDropdown />
         <div className="font-serif text-[46px] leading-[0.95] tracking-[-0.01em]">{title}</div>

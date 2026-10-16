@@ -60,7 +60,7 @@ export function InputBar() {
   const asking = selectedName !== null;
 
   return (
-    <div className="fixed bottom-11 left-1/2 z-[2] flex w-[min(720px,calc(100%-88px))] -translate-x-1/2 flex-col gap-2">
+    <div data-testid="input-bar" className="fixed bottom-11 left-1/2 z-[2] flex w-[min(720px,calc(100%-88px))] -translate-x-1/2 flex-col gap-2">
       <div className="flex min-h-[14px] items-center justify-center gap-2 text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-muted">
         <span className="min-w-0 truncate" role="status">{status}</span>
         {syncError && (

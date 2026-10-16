@@ -63,7 +63,7 @@ export function NodeCard({ id }: { id: string }) {
   };
 
   return (
-    <Panel className="fixed top-[100px] right-11 z-[3] flex max-h-[calc(100%-254px)] w-[322px] max-w-[calc(100%-88px)] flex-col">
+    <Panel data-testid="node-card" className="fixed top-[100px] right-11 z-[3] flex max-h-[calc(100%-254px)] w-[322px] max-w-[calc(100%-88px)] flex-col">
       <div className="flex flex-none items-center gap-[10px] border-b border-ink px-[14px] py-[10px]">
         <span className="h-[10px] w-[10px] flex-none rounded-full border border-ink" style={{ background: node.color }} />
         <span className="flex-1 text-[10.5px] uppercase tracking-[0.16em]">{kind}</span>
@@ -98,7 +98,7 @@ export function NodeCard({ id }: { id: string }) {
         )}
         <MyNotes nodeId={id} brainId={brainId} value={node.userNote} />
         {children.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1.5">
+          <div data-testid="node-children" className="mt-1 flex flex-wrap gap-1.5">
             {children.map(c => <Pill key={c.id} onClick={() => select(c.id)}>{c.name}</Pill>)}
           </div>
         )}
