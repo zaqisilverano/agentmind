@@ -42,7 +42,7 @@ Plain messages in the imperative mood, with an optional type prefix as in the hi
 
 - `tests/unit/`: pure code (engine layout, LLM schemas, fallback, runner, exporters, store, identity).
 - `tests/routes/`: API routes against an in-process Postgres (pglite) with the real migrations. No Postgres install needed.
-- `tests/e2e/`: Playwright smoke test. Needs the dev Postgres and a running dev server.
+- `tests/e2e/`: Playwright smoke test. Playwright starts its own dev server on port 3100, so no dev server is needed. It needs the dev Postgres (`docker compose -f docker/compose.dev.yml up -d`).
 
 Fix a bug with a test that fails first. New LLM reply shapes need a schema test and a check that the fallback output passes the same schema.
 

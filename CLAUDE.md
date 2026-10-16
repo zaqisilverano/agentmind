@@ -6,11 +6,11 @@ Public open-source project by Zaqi Silverano (MIT). Spec: docs/superpowers/specs
 - `middleware.ts` sets the per-request CSP nonce for pages; `next.config.ts` sets the static headers.
 
 ## Boundary rule
-engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, next or db/. engine/layout.ts must not import three (it is bundled into the 3D HTML export).
+engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, next or db/. engine/layout.ts must not import three (it is bundled into the 3D HTML export). ESLint enforces both (`eslint.config.mjs`; type-only imports are allowed), and `npm run lint` covers engine/, db/, scripts/ and tests/ too.
 
 ## Commands
 - `npm run dev` · `npm run typecheck` · `npm run lint` · `npm test` (unit + route tests on pglite, no Postgres needed)
-- `npm run test:e2e` Playwright; needs the dev Postgres (`docker compose -f docker/compose.dev.yml up -d`, `npm run db:migrate`)
+- `npm run test:e2e` Playwright; starts its own server on :3100 and migrates; needs the dev Postgres (`docker compose -f docker/compose.dev.yml up -d`)
 - `npm run eval` prompt eval against the configured LLM provider (not in CI)
 - `npm run db:generate` · `npm run db:migrate` · `npm run build` (runs `prebuild`) · `npm run gen:theme` · `npm run build:export-layout`
 - CI (`.github/workflows/ci.yml`) runs lint, typecheck, test, build and gitleaks.

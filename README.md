@@ -149,7 +149,7 @@ middleware.ts    per-request CSP nonce
 ## Testing
 
 - `npm test`: unit and route tests. Routes run on pglite (in-process Postgres with the real migrations), so no database is needed.
-- `npm run test:e2e`: Playwright. Needs the dev Postgres (`docker compose -f docker/compose.dev.yml up -d`, then `npm run db:migrate`) and the dev server on port 3000.
+- `npm run test:e2e`: Playwright. Starts its own dev server on port 3100 (no dev server needed, port 3000 can stay in use) and applies the migrations itself. Needs the dev Postgres: `docker compose -f docker/compose.dev.yml up -d`.
 - `npm run eval`: sends the prompts in `scripts/eval-prompts.json` to the configured provider and prints source, attempts and latency per call. It reads `.env` and is not part of CI.
 
 CI runs lint, typecheck, `npm test`, `npm run build` and gitleaks on every push and pull request.
@@ -169,15 +169,18 @@ docker compose --env-file .env -f docker/compose.yml up -d --build
 - Migrations run when the app container starts, under a Postgres advisory lock.
 - `DATABASE_URL` must use the service name `db`, not `localhost`.
 - Caddy overwrites `X-Forwarded-For`, and the rate limiter trusts the first value. If you put another proxy in front, make sure it does the same.
+- Caddy forwards the `Host` (and `X-Forwarded-Host`) the browser used. Write requests must carry an `Origin` whose host matches it, so another proxy in front must pass the original host through too.
+- Caddy refuses request bodies over 300 KB; the app caps JSON bodies at 256 KB.
+- Limits for anonymous users: new sessions per client IP per hour are half of the `RATE_LIMIT_PER_HOUR` setting (at least 10), each user can keep 100 brains, and a brain holds up to 300 nodes.
 - The rate limiter lives in process memory, so run a single app instance.
 
 Backup:
 
 ```sh
-docker compose --env-file .env -f docker/compose.yml exec db pg_dump -U atlas atlas > backup.sql
+docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup.sql
 ```
 
-Pass `--env-file .env` on every compose command for this stack. Use the `POSTGRES_USER` and `POSTGRES_DB` values from your `.env` if you changed them.
+Pass `--env-file .env` on every compose command for this stack. The command reads the Postgres user and database from the container's own environment, and `-T` keeps the dump free of terminal control characters.
 
 ## Privacy
 
