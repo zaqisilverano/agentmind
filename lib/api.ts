@@ -64,13 +64,31 @@ export function withUser(handler: Handler): { (req: Request): Promise<Response>;
 
 export const MAX_BODY_BYTES = 262144;
 
+/** Reads the body as a stream and stops with 413 as soon as it passes MAX_BODY_BYTES (chunked bodies have no Content-Length). */
+async function readCapped(req: Request): Promise<string> {
+  if (!req.body) return '';
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw new HttpError(413, 'body too large');
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
+
 /** Parses a JSON request body (capped at MAX_BODY_BYTES) with a Zod schema, after the CSRF guard. Throws HttpError / ZodError. */
 export async function readBody<T>(req: Request, schema: { parse(v: unknown): T }): Promise<T> {
   requireJsonSameOrigin(req);
   const declared = Number(req.headers.get('content-length'));
   if (declared > MAX_BODY_BYTES) throw new HttpError(413, 'body too large');
-  const text = await req.text();
-  if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new HttpError(413, 'body too large');
+  const text = await readCapped(req);
   let raw: unknown;
   try {
     raw = JSON.parse(text);

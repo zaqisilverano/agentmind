@@ -292,4 +292,23 @@ describe('brain routes', () => {
     const res = await call(rounds.POST, 'POST', `/api/brains/${id}/rounds`, { round: 1, nodes: many, log: { seq: 1, agent: 'skeptic', text: 't', node: 'n0', tag: 'x' } }, cookie, id);
     expect(res.status).toBe(400);
   });
+
+  it('413s a chunked body over 256 KB that sends no Content-Length', async () => {
+    const cookie = await asUser();
+    const chunk = new TextEncoder().encode('x'.repeat(32 * 1024));
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 100) return controller.close(); // 3.2 MB in all
+        sent += 1;
+        controller.enqueue(chunk);
+      },
+    });
+    const req = new Request('http://t/api/brains', { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: stream, duplex: 'half' } as RequestInit);
+    expect(req.headers.get('content-length')).toBeNull();
+    const res = await list.POST(req);
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: 'body too large' });
+    expect(sent).toBeLessThan(20); // stopped reading soon after passing the cap
+  });
 });

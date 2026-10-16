@@ -1,5 +1,9 @@
 {$DOMAIN} {
 	encode gzip zstd
+	# The app caps JSON bodies at 256 KB; refuse anything larger before it reaches Node.
+	request_body {
+		max_size 300KB
+	}
 	reverse_proxy app:3000 {
 		# Overwrite, do not append: the app rate limiter trusts the first value.
 		header_up X-Forwarded-For {client_ip}

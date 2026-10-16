@@ -1,19 +1,15 @@
 import { z } from 'zod';
 import { getDb } from '@/db/client';
-import { fail, guard, HttpError, json, requireJsonSameOrigin } from '@/lib/api';
+import { fail, guard, json, readBody } from '@/lib/api';
 import { getUser } from '@/lib/brains/repo';
 import { getEnv } from '@/lib/env';
 import { cookieHeader } from '@/lib/identity';
 
-const body = z.object({ id: z.string().uuid() });
+const RestoreBody = z.object({ id: z.string().uuid() });
 
 export const POST = (req: Request): Promise<Response> =>
   guard(async () => {
-    requireJsonSameOrigin(req);
-    const raw: unknown = await req.json().catch(() => {
-      throw new HttpError(400, 'invalid JSON body');
-    });
-    const { id } = body.parse(raw);
+    const { id } = await readBody(req, RestoreBody);
     const user = await getUser(getDb(), id);
     if (!user) return fail(404, 'unknown id');
     const res = json({ ok: true });

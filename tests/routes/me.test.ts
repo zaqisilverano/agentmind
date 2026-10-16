@@ -83,6 +83,19 @@ describe('POST /api/me/restore', () => {
     expect(await res.json()).toEqual({ error: 'unknown id' });
   });
 
+  it('413s an oversized body (same cap as every other JSON route) and sets no cookie', async () => {
+    const res = await post({ id: 'x'.repeat(300_000) }, { origin: 'http://t' });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: 'body too large' });
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('400s for invalid JSON', async () => {
+    const res = await POST(new Request('http://t/api/me/restore', { method: 'POST', body: '{', headers: { 'content-type': 'application/json' } }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid JSON' });
+  });
+
   it('400s for a malformed body', async () => {
     const res = await post({ id: 'nope' });
     expect(res.status).toBe(400);
