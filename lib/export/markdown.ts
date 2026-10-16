@@ -32,9 +32,9 @@ export function toMarkdown(brain: Brain): string {
     const pad = '  '.repeat(lvl);
     if (lvl === 0) {
       out.push('## ' + n.name + ' (' + n.kind + ')');
-      if (n.note) out.push('', n.note);
+      if (n.note) out.push('', oneLine(n.note));
       out.push('');
-    } else out.push(pad + '- **' + n.name + '**' + (n.note ? ' — ' + n.note : ''));
+    } else out.push(pad + '- **' + n.name + '**' + (n.note ? ' — ' + oneLine(n.note) : ''));
     if (n.myNote) out.push(pad + '  > My note: ' + oneLine(n.myNote));
     n.children.forEach(c => walk(c, lvl + 1));
     if (lvl === 0) out.push('');

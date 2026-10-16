@@ -32,6 +32,13 @@ describe("exports", () => {
     ]);
     expect(lines[i + 3]).toBe("      > My note: keep");
   });
+  it("a multi-line AI note stays on its bullet line (and on one line under a branch heading)", () => {
+    const multi = { ...b, nodes: b.nodes.map(n => (n.id === "b0c0" ? { ...n, note: "First line.\nSecond line." } : n.depth === 1 && n.id === "b0" ? { ...n, note: "Top.\r\nMore." } : n)) };
+    const lines = toMarkdown(multi).split("\n");
+    expect(lines).toContain("  - **Garage clutter** — First line. Second line.");
+    expect(lines).not.toContain("Second line.");
+    expect(lines).toContain("Top. More.");
+  });
   it("json is a nested tree with links and synthesis", () => {
     const j = JSON.parse(toJson(b));
     expect(j.branches[0].children[0].name).toBe("Garage clutter");
