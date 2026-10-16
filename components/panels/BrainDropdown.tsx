@@ -1,13 +1,11 @@
 'use client';
 
+import { FOCUS_INPUT_EVENT } from '@/lib/events';
 import { selectBrain } from '@/lib/sync';
 import { useStore } from '@/lib/store';
 import { Dropdown } from '@/components/ui/Dropdown';
 
 const pad3 = (n: number) => String(n).padStart(3, '0');
-
-/** Event the input bar listens for: "+ New second brain" moves the caret there. */
-export const FOCUS_INPUT_EVENT = 'ab:focus-input';
 
 /** "Second brain № 001 ▾" with the saved-brain list, plus the « button that hides the left panel. */
 export function BrainDropdown() {

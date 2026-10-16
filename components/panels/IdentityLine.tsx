@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiClient, ApiError } from '@/lib/apiClient';
-import { selectBrain } from '@/lib/sync';
+import { resetSession, switchUser } from '@/lib/sync';
 import { useStore } from '@/lib/store';
 
 /** Display-only mirror of the anonymous id (spec §5). The server never reads it. */
 export const UID_DISPLAY_KEY = 'ab_uid_display';
 const COPIED_MS = 1500;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LOAD_FAILED = 'Restored, but your brains could not be loaded.';
 
 const SMALL = 'cursor-pointer border border-ink px-[7px] py-1 font-mono text-[9.5px] uppercase leading-[normal] tracking-[0.12em] disabled:cursor-default disabled:opacity-40';
 
@@ -21,15 +23,18 @@ function mirror(id: string): void {
 
 const message = (e: unknown): string => (e instanceof ApiError ? e.message : 'Network error, try again');
 
-/** "Your ID" with Copy, and a Restore ID form that re-issues the cookie for a pasted uuid and reloads the brains. */
+/**
+ * "Your ID" with Copy, and a Restore ID form. Restoring is two steps: the server re-issues the cookie, then `me`
+ * reloads the brains. If only the first succeeds, the old user's state is dropped at once and Retry re-runs `me`.
+ */
 export function IdentityLine() {
   const userId = useStore(s => s.user?.id ?? null);
-  const hydrate = useStore(s => s.hydrate);
   const [copied, setCopied] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [value, setValue] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { if (userId) mirror(userId); }, [userId]);
@@ -48,26 +53,46 @@ export function IdentityLine() {
     timer.current = setTimeout(() => { setCopied(false); timer.current = null; }, COPIED_MS);
   };
 
+  /** Step 2: load the (new) user's brains and open the first. Retry calls only this. */
+  const load = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      const me = await apiClient.me();
+      setLoadFailed(false);
+      setRestoring(false);
+      await switchUser(me);
+    } catch {
+      setLoadFailed(true);
+      setError(LOAD_FAILED);
+    } finally {
+      setPending(false);
+    }
+  };
+
   const restore = async (e: FormEvent) => {
     e.preventDefault();
     const id = value.trim();
     if (!id || pending) return;
+    if (!UUID.test(id)) {
+      setError('That does not look like an ID');
+      return;
+    }
     setPending(true);
     setError(null);
+    setLoadFailed(false);
     try {
       await apiClient.restore(id);
-      const me = await apiClient.me();
-      hydrate(me);
-      setValue('');
-      setRestoring(false);
-      const first = me.brains[0];
-      if (first) await selectBrain(first.id);
-      else useStore.setState({ brain: null, selected: null });
     } catch (err) {
       setError(message(err));
-    } finally {
       setPending(false);
+      return;
     }
+    // The cookie now belongs to `id`: nothing of the previous user may stay open or editable.
+    resetSession();
+    useStore.setState({ user: { id } });
+    setValue('');
+    await load();
   };
 
   return (
@@ -81,7 +106,7 @@ export function IdentityLine() {
         <button
           type="button"
           aria-expanded={restoring}
-          onClick={() => { setRestoring(!restoring); setError(null); }}
+          onClick={() => { setRestoring(!restoring); if (!loadFailed) setError(null); }}
           className={`${SMALL} ${restoring ? 'bg-ink text-panel' : 'bg-panel text-ink hover:bg-ink hover:text-panel'}`}
         >
           Restore ID
@@ -103,7 +128,16 @@ export function IdentityLine() {
           </button>
         </form>
       )}
-      {error && <div role="alert" className="text-[10px] leading-[1.4] text-accent">{error}</div>}
+      {error && (
+        <div role="alert" className="flex items-center gap-2 text-[10px] leading-[1.4] text-accent">
+          <span className="flex-1">{error}</span>
+          {loadFailed && (
+            <button type="button" disabled={pending} onClick={() => void load()} className={`${SMALL} bg-panel text-ink hover:bg-ink hover:text-panel`}>
+              {pending ? 'Loading…' : 'Retry'}
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

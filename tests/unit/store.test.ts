@@ -246,3 +246,44 @@ describe('createBrain / selectBrain / deleteBrain', () => {
     expect(useStore.getState().brain!.id).toBe(brain.id);
   });
 });
+
+describe('switchUser', () => {
+  const row = (id: string) => ({ id, number: 1, title: id, nodeCount: 1, updatedAt: '' });
+
+  it('drops the old user state at once, and a slower earlier selectBrain does not reopen the old brain', async () => {
+    const old: Brain = { ...brain, id: 'old', title: 'Old' };
+    const fresh: Brain = { ...brain, id: 'new', title: 'New' };
+    let release!: (b: Brain) => void;
+    api.getBrain.mockReturnValueOnce(new Promise<Brain>((r) => (release = r))).mockResolvedValueOnce(fresh);
+    useStore.getState().select('b0');
+    useStore.getState().setRun({ active: true, paused: false, phase: 'diverge', agent: 'builder' });
+    useStore.getState().setSyncError({ label: 'Edit node', retry: async () => undefined });
+    const sel = sync.selectBrain('old');
+    const sw = sync.switchUser({ user: { id: 'u2' }, brains: [row('new')] });
+    const mid = useStore.getState();
+    expect([mid.brain, mid.selected, mid.syncError, mid.user?.id]).toEqual([null, null, null, 'u2']);
+    expect(mid.run).toMatchObject({ active: false, paused: true, phase: null, agent: null });
+    expect(mid.brains.map((b) => b.id)).toEqual(['new']);
+    await sw;
+    release(old);
+    await sel;
+    expect(useStore.getState().brain!.id).toBe('new');
+    expect(api.getBrain).toHaveBeenLastCalledWith('new');
+  });
+
+  it('with no brains ends with brain null and the run paused, even if an earlier selectBrain resolves later', async () => {
+    const old: Brain = { ...brain, id: 'old', title: 'Old' };
+    let release!: (b: Brain) => void;
+    api.getBrain.mockReturnValueOnce(new Promise<Brain>((r) => (release = r)));
+    useStore.getState().setRun({ active: true, paused: false });
+    const sel = sync.selectBrain('old');
+    await sync.switchUser({ user: { id: 'u2' }, brains: [] });
+    release(old);
+    await sel;
+    const s = useStore.getState();
+    expect(s.brain).toBeNull();
+    expect(s.brains).toEqual([]);
+    expect(s.run).toMatchObject({ active: false, paused: true });
+    expect(api.getBrain).toHaveBeenCalledTimes(1);
+  });
+});

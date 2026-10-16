@@ -1,6 +1,6 @@
 import type { Brain, CrossLink, IdeaNode, LogEntry, Takeaway } from '@/engine/types';
-import { apiClient, type ApiClient, type BrainListRow, type PatchNodeRequest } from '@/lib/apiClient';
-import { useStore } from '@/lib/store';
+import { apiClient, type ApiClient, type BrainListRow, type MeResponse, type PatchNodeRequest } from '@/lib/apiClient';
+import { initialState, useStore } from '@/lib/store';
 
 /**
  * Every mutation applies to the store first, then calls the API. A network error (TypeError) is retried once.
@@ -62,6 +62,23 @@ export async function selectBrain(id: string): Promise<void> {
   await send('Open brain', () => api.getBrain(id), (brain) => {
     if (token === selectToken) store().openBrain(brain);
   });
+}
+
+/**
+ * Drops everything that belongs to the current identity: invalidates any in-flight `selectBrain`/`createBrain`,
+ * stops the run, closes the brain and clears the list and any pending sync error. The user row is left alone.
+ */
+export function resetSession(): void {
+  ++selectToken;
+  useStore.setState({ run: { ...initialState.run, paused: true }, brain: null, selected: null, syncError: null, brains: [] });
+}
+
+/** After the cookie changed hands (Restore ID): reset, adopt the new user and list, then open their first brain. */
+export async function switchUser(me: MeResponse): Promise<void> {
+  resetSession();
+  store().hydrate(me);
+  const first = me.brains[0];
+  if (first) await selectBrain(first.id);
 }
 
 export async function createBrain(title: string, summary: string, nodes: IdeaNode[], links: CrossLink[] = []): Promise<Brain | null> {
