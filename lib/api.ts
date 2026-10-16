@@ -50,11 +50,20 @@ export function withUser(handler: Handler) {
     });
 }
 
-/** Parses a JSON request body with a Zod schema, after the CSRF guard. Throws HttpError / ZodError. */
+export const MAX_BODY_BYTES = 262144;
+
+/** Parses a JSON request body (capped at MAX_BODY_BYTES) with a Zod schema, after the CSRF guard. Throws HttpError / ZodError. */
 export async function readBody<T>(req: Request, schema: { parse(v: unknown): T }): Promise<T> {
   requireJsonSameOrigin(req);
-  const raw: unknown = await req.json().catch(() => {
-    throw new HttpError(400, 'invalid JSON body');
-  });
+  const declared = Number(req.headers.get('content-length'));
+  if (declared > MAX_BODY_BYTES) throw new HttpError(413, 'body too large');
+  const text = await req.text();
+  if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new HttpError(413, 'body too large');
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new HttpError(400, 'invalid JSON');
+  }
   return schema.parse(raw);
 }

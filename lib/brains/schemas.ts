@@ -4,6 +4,8 @@ import { KINDS } from '@/engine/types';
 const AGENTS = ['researcher', 'builder', 'customer', 'skeptic', 'strategist'] as const;
 const Agent = z.enum(AGENTS);
 
+const MAX_BATCH = 200;
+
 export const IdeaNodeSchema = z.object({
   id: z.string().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/),
   name: z.string().min(1).max(60),
@@ -34,7 +36,7 @@ export const LogEntrySchema = z.object({
 });
 
 export const TakeawaySchema = z.object({
-  path: z.array(z.string()),
+  path: z.array(z.string().max(64)).max(64),
   verdict: z.string().max(300),
   brief: z.string().max(900),
 });
@@ -43,8 +45,8 @@ export const CreateBrainBody = z
   .object({
     title: z.string().min(1).max(80),
     summary: z.string().max(400).default(''),
-    nodes: z.array(IdeaNodeSchema).min(1),
-    links: z.array(CrossLinkSchema).default([]),
+    nodes: z.array(IdeaNodeSchema).min(1).max(MAX_BATCH),
+    links: z.array(CrossLinkSchema).max(MAX_BATCH).default([]),
   })
   .refine((b) => b.nodes.filter((n) => n.parent === null).length === 1 && b.nodes.some((n) => n.id === 'n0' && n.parent === null), {
     message: 'nodes must contain exactly one root, with id n0',
@@ -58,7 +60,7 @@ export const PatchBrainBody = z.object({
   synth: TakeawaySchema.nullable().optional(),
 });
 
-export const AddNodesBody = z.object({ nodes: z.array(IdeaNodeSchema).min(1) });
+export const AddNodesBody = z.object({ nodes: z.array(IdeaNodeSchema).min(1).max(MAX_BATCH) });
 export const PatchNodeBody = z.object({
   id: z.string().min(1).max(64),
   name: z.string().min(1).max(60).optional(),
@@ -66,11 +68,11 @@ export const PatchNodeBody = z.object({
   userNote: z.string().max(2000).optional(),
 });
 export const DeleteNodeBody = z.object({ id: z.string().min(1).max(64) });
-export const AddLinksBody = z.object({ links: z.array(CrossLinkSchema).min(1) });
+export const AddLinksBody = z.object({ links: z.array(CrossLinkSchema).min(1).max(MAX_BATCH) });
 export const RoundBody = z.object({
   round: z.number().int().min(1),
-  nodes: z.array(IdeaNodeSchema),
-  links: z.array(CrossLinkSchema).default([]),
+  nodes: z.array(IdeaNodeSchema).max(MAX_BATCH),
+  links: z.array(CrossLinkSchema).max(MAX_BATCH).default([]),
   log: LogEntrySchema,
 });
 export const TakeawayBody = z.object({ synth: TakeawaySchema, log: LogEntrySchema });

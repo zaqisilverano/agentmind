@@ -52,10 +52,10 @@ export async function addNodes(db: Db, userId: string, brainId: string, batch: N
 }
 
 export async function patchNode(db: Db, userId: string, brainId: string, patch: PatchNodeInput): Promise<Brain> {
-  await assertOwned(db, userId, brainId);
   const { id, ...fields } = patch;
   const set = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
   await db.transaction(async (tx) => {
+    await assertOwned(tx, userId, brainId, true);
     if (Object.keys(set).length > 0) {
       const res = await tx.update(nodes).set(set).where(and(eq(nodes.brainId, brainId), eq(nodes.id, id))).returning({ id: nodes.id });
       if (res.length === 0) throw new HttpError(404, 'node not found');
@@ -67,9 +67,9 @@ export async function patchNode(db: Db, userId: string, brainId: string, patch: 
 
 /** Deletes a node, all its descendants and every link touching them. The core (n0) cannot be deleted. */
 export async function deleteSubtree(db: Db, userId: string, brainId: string, nodeId: string): Promise<Brain> {
-  await assertOwned(db, userId, brainId);
-  if (nodeId === 'n0') throw new HttpError(400, 'cannot delete the core');
   await db.transaction(async (tx) => {
+    await assertOwned(tx, userId, brainId, true); // ownership first (404 beats 400), and hold the lock across read-compute-delete
+    if (nodeId === 'n0') throw new HttpError(400, 'cannot delete the core');
     const rows = await tx.select({ id: nodes.id, parentId: nodes.parentId }).from(nodes).where(eq(nodes.brainId, brainId));
     if (!rows.some((r) => r.id === nodeId)) throw new HttpError(404, 'node not found');
     const doomed = new Set([nodeId]);

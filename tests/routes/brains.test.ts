@@ -206,4 +206,15 @@ describe('brain routes', () => {
     expect(res.status).toBe(415);
     expect((await call(one.PATCH, 'PATCH', `/api/brains/${id}`, { title: '' }, cookie, id)).status).toBe(400);
   });
+
+  it('413s a body over 256 KB and 400s a round with more than 200 nodes', async () => {
+    const cookie = await asUser();
+    const big = await call(list.POST, 'POST', '/api/brains', { title: 'x', summary: 'y'.repeat(300_000), nodes: [node('n0', null, 0)] }, cookie);
+    expect(big.status).toBe(413);
+    expect(big.body).toEqual({ error: 'body too large' });
+    const id = await sampleId(cookie);
+    const many = Array.from({ length: 201 }, (_, i) => node(`m${i}`, 'b0', 2));
+    const res = await call(rounds.POST, 'POST', `/api/brains/${id}/rounds`, { round: 1, nodes: many, log: { seq: 1, agent: 'skeptic', text: 't', node: 'n0', tag: 'x' } }, cookie, id);
+    expect(res.status).toBe(400);
+  });
 });
