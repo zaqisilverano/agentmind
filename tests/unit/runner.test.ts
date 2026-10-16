@@ -23,7 +23,6 @@ function setup(opts: { links?: (target: string) => L[] } = {}) {
     metas: [] as LlmMeta[],
     clock: 1000,
     fail: false,
-    syncFail: false,
     failApplyFlag: false,
     failTakeawayFlag: false,
     leaf: 'b2c1',
@@ -56,18 +55,17 @@ function setup(opts: { links?: (target: string) => L[] } = {}) {
         brain.log.push(entry);
         h.rounds.push({ round: body.round, tag: body.log.tag, links: body.links.length, nodes: body.nodes.length });
         h.onApplied(body.round);
-        if (h.failApplyFlag) h.syncFail = true;
+        return !h.failApplyFlag;
       },
       setTakeaway: async (synth, log) => {
         brain.synth = synth;
         brain.log.push({ ...log, seq: brain.log.length + 1 });
         h.takeaways.push({ path: synth.path, leaf: log.node });
-        if (h.failTakeawayFlag) h.syncFail = true;
+        return !h.failTakeawayFlag;
       },
     },
     getBrain: () => h.current,
     scene: async (e) => { h.onScene(e); h.events.push(e); },
-    syncFailed: () => h.syncFail,
     ink: () => '#111',
     sleep: async () => {},
     rand: () => 0,
@@ -237,11 +235,11 @@ describe('AgentRunner', () => {
     expect(h.takeaways).toHaveLength(0);
   });
 
-  it('syncFailed after applyRound emits error, pauses and stops', async () => {
+  it('applyRound resolving false emits error, pauses and stops', async () => {
     const { h, runner } = setup();
     h.failApplyFlag = true;
     await runner.start('brain-1', 3);
-    expect(h.emitted.some((e) => e.startsWith('error:'))).toBe(true);
+    expect(h.emitted).toContain('error:Round not saved');
     expect(h.emitted).not.toContain('finished');
     expect(h.emitted.some((e) => e.startsWith('status:Paused'))).toBe(false);
     expect(h.rounds).toHaveLength(1);
@@ -251,12 +249,12 @@ describe('AgentRunner', () => {
     expect(runner.running).toBe(false);
   });
 
-  it('syncFailed after setTakeaway emits error and does not finish', async () => {
+  it('setTakeaway resolving false emits error and does not finish', async () => {
     const { h, runner } = setup();
     h.failTakeawayFlag = true;
     await runner.start('brain-1', 1);
     expect(h.takeaways).toHaveLength(1);
-    expect(h.emitted.some((e) => e.startsWith('error:'))).toBe(true);
+    expect(h.emitted).toContain('error:Takeaway not saved');
     expect(h.emitted).not.toContain('finished');
     expect(types(h.events).at(-1)).toBe('done');
     expect(runner.running).toBe(false);

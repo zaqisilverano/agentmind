@@ -51,7 +51,6 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
       getBrain: () => store().brain,
       scene: (ev) => scene()?.agent(ev) ?? Promise.resolve(),
       ink: () => THEMES[store().theme].ink,
-      syncFailed: () => store().syncError !== null,
       onMeta: (meta) => store().setProvider(meta),
       ...overrides,
     });
@@ -98,8 +97,7 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
       const r = ensure();
       if (r.running) return;
       const rounds = s.settings.rounds;
-      // A stale error would make the runner's syncFailed() abort the first round.
-      s.setSyncError(null);
+      // A pending syncError (an unsaved edit) is kept: its Retry must survive the run. The runner checks each save's own result.
       s.select(null);
       s.setRun({ active: true, paused: false, round: brain.round, total: brain.round + rounds, phase: null, agent: null, status: '' });
       void r.start(brain.id, rounds).finally(() => store().setRun({ active: false, phase: null, agent: null }));

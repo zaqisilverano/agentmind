@@ -151,7 +151,7 @@ describe('applyRound', () => {
     expect(local.round).toBe(2);
     expect(local.nodes.some((n) => n.id === 'b1c0xr20')).toBe(true);
     expect(local.log.at(-1)).toMatchObject({ seq: 2, text: 'local' });
-    await p;
+    expect(await p).toBe(true);
     expect(api.applyRound).toHaveBeenCalledWith(brain.id, expect.objectContaining({ round: 2, log: expect.objectContaining({ seq: 2 }) }));
     expect(useStore.getState().brain).toEqual(server);
   });
@@ -163,6 +163,14 @@ describe('applyRound', () => {
     await p;
     expect(useStore.getState().brain!.id).toBe('other');
   });
+  it('resolves false and sets syncError when the save fails, even with an older error pending', async () => {
+    const older = { label: 'Edit node', retry: async () => {} };
+    useStore.setState({ syncError: older });
+    api.applyRound.mockRejectedValue(new Error('500'));
+    const ok = await sync.applyRound({ round: 2, nodes: [], links: [], log: { agent: 'customer', text: 't', node: 'n0', tag: 'x' } });
+    expect(ok).toBe(false);
+    expect(useStore.getState().syncError?.label).toBe('Save round');
+  });
 });
 
 describe('setTakeaway', () => {
@@ -173,8 +181,14 @@ describe('setTakeaway', () => {
     const p = sync.setTakeaway(synth, { agent: 'strategist', text: 't', node: 'b1', tag: 'Takeaway' });
     expect(useStore.getState().brain!.synth).toEqual(synth);
     expect(useStore.getState().brain!.log.at(-1)).toMatchObject({ seq: 2, tag: 'Takeaway' });
-    await p;
+    expect(await p).toBe(true);
     expect(useStore.getState().brain).toEqual(server);
+  });
+  it('resolves false and sets syncError when the save fails', async () => {
+    api.setTakeaway.mockRejectedValue(new Error('500'));
+    const ok = await sync.setTakeaway({ path: ['n0'], verdict: 'v', brief: 'b' }, { agent: 'strategist', text: 't', node: 'n0', tag: 'Takeaway' });
+    expect(ok).toBe(false);
+    expect(useStore.getState().syncError?.label).toBe('Save takeaway');
   });
 });
 

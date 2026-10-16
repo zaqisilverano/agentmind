@@ -92,14 +92,15 @@ describe('controller', () => {
     c.dispose();
   };
 
-  it('a run clears a stale sync error, applies each round once and opens the takeaway', async () => {
-    useStore.setState({ settings: { rounds: 5 }, syncError: { label: 'old', retry: async () => {} }, selected: 'b2' });
+  it('a run keeps a pending sync error, applies each round once and opens the takeaway', async () => {
+    const pending = { label: 'Edit node', retry: async () => {} };
+    useStore.setState({ settings: { rounds: 5 }, syncError: pending, selected: 'b2' });
     useStore.getState().setTakeawayOpen(false);
     useStore.getState().setShowPath(false);
     const log = brain.log.length;
     await run();
     const s = useStore.getState();
-    expect(s.syncError).toBeNull();
+    expect(s.syncError).toBe(pending);
     expect(s.selected).toBeNull();
     expect(s.brain!.round).toBe(brain.round + 5);
     expect(s.brain!.log.length).toBe(log + 6);

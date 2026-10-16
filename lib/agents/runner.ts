@@ -19,13 +19,12 @@ interface Events {
 
 export interface RunnerDeps {
   api: { agentRound: typeof apiClient.llm.agentRound; takeaway: typeof apiClient.llm.takeaway };
-  sync: { applyRound: (body: RoundInput) => Promise<void>; setTakeaway: (synth: Takeaway, log: Omit<LogEntry, 'seq'>) => Promise<void> };
+  /** Each resolves true when the save succeeded; false (or a rejection) stops the run with an error. */
+  sync: { applyRound: (body: RoundInput) => Promise<boolean>; setTakeaway: (synth: Takeaway, log: Omit<LogEntry, 'seq'>) => Promise<boolean> };
   getBrain: () => Brain | null;
   /** Sends a choreography event to the scene; resolves when the scene's animation for it has finished. */
   scene: (event: AgentEvent) => Promise<void>;
   ink: () => string;
-  /** True when the last sync call failed (the real sync layer reports failures through the store, not by rejecting). */
-  syncFailed: () => boolean;
   onMeta?: (meta: LlmMeta) => void;
   sleep?: (ms: number) => Promise<void>;
   rand?: () => number;
@@ -159,8 +158,7 @@ export class AgentRunner {
         }
         // applyRound patches whichever brain the store holds, so never call it after a switch (a pause alone still persists).
         if (brain() === null) break;
-        await deps.sync.applyRound({ round: r, nodes: children, links, log: entry });
-        if (deps.syncFailed()) throw new Error('Round not saved');
+        if (!(await deps.sync.applyRound({ round: r, nodes: children, links, log: entry }))) throw new Error('Round not saved');
         completed = r;
 
         const names = new Map((brain()?.nodes ?? before.nodes.concat(children)).map((n) => [n.id, n.name]));
@@ -250,8 +248,7 @@ export class AgentRunner {
     }
     const synth: Takeaway = { path: pathTo(now.nodes, leaf.id), verdict: reply.data.verdict, brief: reply.data.brief };
     const entry: Omit<LogEntry, 'seq'> = { agent: 'strategist', text: synth.verdict, node: leaf.id, tag: 'Takeaway' };
-    await deps.sync.setTakeaway(synth, entry);
-    if (deps.syncFailed()) throw new Error('Takeaway not saved');
+    if (!(await deps.sync.setTakeaway(synth, entry))) throw new Error('Takeaway not saved');
     this.emit('log', { ...entry, seq: 0 });
     return true;
   }

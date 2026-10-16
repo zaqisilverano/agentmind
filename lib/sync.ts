@@ -5,7 +5,8 @@ import { initialState, useStore } from '@/lib/store';
 /**
  * Every mutation applies to the store first, then calls the API. A network error (TypeError) is retried once.
  * On final failure `syncError` holds the label and a `retry` that re-sends the same call. There is no rollback.
- * Mutations never reject: failure is reported through `syncError`.
+ * Mutations never reject: failure is reported through `syncError`. `applyRound` and `setTakeaway` also resolve false
+ * when the save failed, so the agent runner can stop without reading (possibly older) `syncError` state.
  */
 
 let api: ApiClient = apiClient;
@@ -180,23 +181,27 @@ export async function addLinks(links: CrossLink[]): Promise<void> {
 
 export interface RoundInput { round: number; nodes: IdeaNode[]; links: CrossLink[]; log: Omit<LogEntry, 'seq'> }
 
-/** Applies one agent round locally, persists it in one request, then adopts the server's brain (authoritative log seqs). */
-export async function applyRound(input: RoundInput): Promise<void> {
+/**
+ * Applies one agent round locally, persists it in one request, then adopts the server's brain (authoritative log seqs).
+ * Resolves true when the round was saved.
+ */
+export async function applyRound(input: RoundInput): Promise<boolean> {
   const brain = store().brain;
-  if (!brain) return;
+  if (!brain) return false;
   const log: LogEntry = { ...input.log, seq: nextSeq(brain) };
   const have = new Set(brain.nodes.map((n) => n.id));
   const nodes = input.nodes.filter((n) => !have.has(n.id));
   const linkSeen = new Set(brain.links.map(linkKey));
   const links = input.links.filter((l) => !linkSeen.has(linkKey(l)) && linkSeen.add(linkKey(l)));
   store().patchBrain((b) => ({ ...b, round: input.round, nodes: [...b.nodes, ...nodes], links: [...b.links, ...links], log: [...b.log, log] }));
-  await send('Save round', () => api.applyRound(brain.id, { round: input.round, nodes, links, log }), adopt(brain.id));
+  return send('Save round', () => api.applyRound(brain.id, { round: input.round, nodes, links, log }), adopt(brain.id));
 }
 
-export async function setTakeaway(synth: Takeaway, log: Omit<LogEntry, 'seq'>): Promise<void> {
+/** Resolves true when the takeaway was saved. */
+export async function setTakeaway(synth: Takeaway, log: Omit<LogEntry, 'seq'>): Promise<boolean> {
   const brain = store().brain;
-  if (!brain) return;
+  if (!brain) return false;
   const entry: LogEntry = { ...log, seq: nextSeq(brain) };
   store().patchBrain((b) => ({ ...b, synth, log: [...b.log, entry] }));
-  await send('Save takeaway', () => api.setTakeaway(brain.id, { synth, log: entry }), adopt(brain.id));
+  return send('Save takeaway', () => api.setTakeaway(brain.id, { synth, log: entry }), adopt(brain.id));
 }
