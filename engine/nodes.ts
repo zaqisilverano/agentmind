@@ -83,6 +83,9 @@ export function createNodeGraph(
   const sphere = new THREE.SphereGeometry(1, 28, 18);
   const ink = new THREE.Color(t.ink);
   const links = segments(ink, t.line), drops = segments(ink, DROP_OPACITY);
+  // Allocate the buffers now so the scene can tick before the first brain arrives.
+  ensureSegments(links, 0);
+  ensureSegments(drops, 0);
   root.add(links, drops);
   const overlays = createOverlays(root, camera, t);
 

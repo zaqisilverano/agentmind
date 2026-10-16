@@ -12,8 +12,8 @@
   --color-hot: var(--hot);
   --color-rule: var(--rule);
   --color-rule2: var(--rule2);
-  --font-serif: "Instrument Serif", serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-serif: var(--font-instrument-serif), serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
 }
 
 body {

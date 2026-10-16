@@ -98,6 +98,14 @@ describe('engine modules load', () => {
     expect(layer.children).toHaveLength(0);
   });
 
+  it('node graph ticks before any brain is set', () => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+    const g = createNodeGraph({ scene, camera }, THEMES.atlas);
+    expect(() => g.layoutTick('constellation', 16, 16)).not.toThrow();
+    g.dispose();
+  });
+
   it('node graph spawns, eases to targets, picks, diffs and disposes without a renderer', () => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);

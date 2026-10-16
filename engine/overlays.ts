@@ -29,7 +29,11 @@ export function createOverlays(parent: THREE.Object3D, camera: THREE.Camera, the
   const revealing = new Map<string, number>();
 
   // Strongest path: accent segments plus beads (lines 466–469).
-  const pathSeg = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 1 }));
+  // One empty segment up front so `update` can run before the first `setLinks` (no brain yet).
+  const pathGeo = new THREE.BufferGeometry();
+  pathGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  pathGeo.setDrawRange(0, 0);
+  const pathSeg = new THREE.LineSegments(pathGeo, new THREE.LineBasicMaterial({ color: accent, transparent: true, opacity: 1 }));
   pathSeg.frustumCulled = false;
   parent.add(pathSeg);
   const beadGeo = new THREE.SphereGeometry(1, 10, 8);
