@@ -108,7 +108,8 @@ Anonymous only. No accounts in v1.
 
 - Cookie name `ab_uid`. Value `<uuid>.<hmac-sha256 hex>` signed with `COOKIE_SECRET`. Flags: httpOnly, SameSite=Lax, Path=/, Max-Age 1 year, Secure when `NODE_ENV=production`.
 - `lib/identity.ts` exports `sign(uuid)`, `verify(value) → uuid | null`, and `requireUser(req) → { userId, setCookie?: string }`. A missing or invalid cookie creates a new `users` row and returns a `Set-Cookie` header for the route to attach. Every API route uses `requireUser`.
-- `GET /api/me` returns `{ user: { id, createdAt }, brains: [{ id, number, title, nodeCount, updatedAt }] }` and sets the cookie on first visit. If the user has no brains, the server creates the sample "Tool Library" brain (`lib/sample/toolLibrary.ts`, a verbatim port of the prototype sample) as brain № 001 before responding.
+- `GET /api/me` returns `{ user: { id, createdAt }, brains: [{ id, number, title, nodeCount, updatedAt }] }` and sets the cookie on first visit. It never creates brains: a new user gets `brains: []`, and their first mapped idea becomes brain № 001.
+- Empty state (no brain open and no saved brains: a first visit, or after deleting the last brain): the canvas shows only the ground; the left panel shows the "Second brain — ▾" dropdown (its menu holds only "+ New second brain"), the title "Your second brain", the summary "Type an idea below. The map, the agents and the takeaway grow from there.", the idle agent team and the ID line, with no takeaway or legend; the hidden-panel tab reads "» Your second brain". The input is focused, "Map it →" is enabled and "▶ Run agents" is disabled, and the status line reads "Type an idea to map your first second brain." The "Tool Library" sample (`lib/sample/toolLibrary.ts`, a verbatim port of the prototype sample) is kept for tests, fixtures and the dev pages only.
 - Recovery: the left panel shows "Your ID: <first 8 chars>" with a copy button that copies the full uuid. A "Restore ID" input posts the uuid to `POST /api/me/restore`; the server verifies the uuid exists in `users` and re-issues the signed cookie. There is no other recovery path.
 - The uuid is mirrored to `localStorage['ab_uid_display']` for the panel only. The server never trusts it.
 
@@ -118,7 +119,7 @@ All routes: JSON only, bodies validated with Zod, body size capped at 256 KB, re
 
 | Route | Purpose |
 |---|---|
-| `GET /api/me` | identity + brain list, seeds sample brain |
+| `GET /api/me` | identity + brain list (empty for a new user) |
 | `POST /api/me/restore` | `{ id }` → re-issue cookie if user exists |
 | `GET /api/brains` | list |
 | `POST /api/brains` | `{ title, summary, nodes, links? }` → create brain with next number, return full Brain |
@@ -218,8 +219,8 @@ MIT `LICENSE`. `README.md`: one-line pitch, screenshot and GIF (placeholder path
 ## 15. Testing
 
 - Unit (Vitest): `layout.ts` all modes and the depth cone and `heightAt`; `schemas.ts` with valid and invalid samples; `extractJson`; `fallback.ts` output passes schemas; `pickTarget`; `makeKids` id and inheritance rules; `markdown/json/html3d` exporters against a fixture brain; `identity.ts` sign/verify/tamper; `rateLimit`; `themes.ts` and the generated CSS match.
-- Routes (Vitest + pglite, Drizzle migrations applied in `beforeAll`): first visit sets cookie and seeds the sample brain; second visit reuses identity; user A cannot read or mutate user B's brain; create brain assigns numbers 1, 2, 3; delete subtree removes descendants and refuses `n0`; rounds route is atomic (a failing link insert rolls back nodes); LLM routes return fallback with `meta.source = 'fallback'` when no key; rate limiter returns 429.
-- E2E (Playwright, fallback provider, Postgres from compose.dev): load shows the sample brain; type an idea and press Enter shows new nodes within 5 s; click a node opens the card; Expand adds children; View and Design switches do not throw; Focus and Esc; Markdown download has the title; viewport 900×540 screenshot has no overlapping panels (checked by bounding boxes).
+- Routes (Vitest + pglite, Drizzle migrations applied in `beforeAll`): first visit sets cookie and returns no brains; second visit reuses identity; user A cannot read or mutate user B's brain; create brain assigns numbers 1, 2, 3; delete subtree removes descendants and refuses `n0`; rounds route is atomic (a failing link insert rolls back nodes); LLM routes return fallback with `meta.source = 'fallback'` when no key; rate limiter returns 429.
+- E2E (Playwright, fallback provider, Postgres from compose.dev): load shows the empty state (title "Your second brain", input focused, Run agents disabled); type an idea and press Enter shows new nodes within 5 s; click a node opens the card; Expand adds children; View and Design switches do not throw; Focus and Esc; Markdown download has the title; viewport 900×540 screenshot has no overlapping panels (checked by bounding boxes).
 - `npm run eval`: runs the four prompts against the configured provider over `scripts/eval-prompts.json` and prints pass rate, retries, latency. Not part of CI.
 
 ## 16. Out of scope for v1

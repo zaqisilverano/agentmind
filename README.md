@@ -17,7 +17,7 @@ Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.
 
 **The agents.** Five animated agents (Researcher, Builder, Customer, Skeptic, Strategist) take turns for 5, 10 or 20 rounds. Each round one agent picks a thin spot, walks to it, adds sub-ideas, and may draw a link between two branches. At the end the Strategist writes a Key takeaway and the map highlights the strongest path from the idea to one leaf.
 
-**Persistence.** Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file.
+**Persistence.** A first visit starts with an empty map: nothing is saved until you map your first idea. Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file.
 
 Without an LLM API key the app still works: it falls back to a local keyword parser and template ideas, so you can try everything offline.
 
@@ -35,7 +35,7 @@ npm run db:migrate
 npm run dev
 ```
 
-Open http://localhost:3000. With `LLM_API_KEY` empty you get the offline fallback.
+Open http://localhost:3000. The first visit starts with an empty map; type an idea and press Enter to map your first brain. With `LLM_API_KEY` empty you get the offline fallback.
 
 Optional: `sh scripts/install-hooks.sh` installs a pre-commit hook that blocks staged secrets. It is manual on purpose.
 
@@ -113,7 +113,7 @@ lib/
   llm/           provider client, prompts, Zod schemas, offline fallback
   agents/        roster, runner, target picking
   export/        Markdown, JSON and 3D HTML exporters
-  sample/        the sample "Tool Library" brain
+  sample/        the "Tool Library" sample brain (tests and dev pages only)
   brains/        database access for brains
   store.ts, sync.ts, controller.ts   client state and sync
   identity.ts, rateLimit.ts, env.ts, securityHeaders.ts
@@ -187,7 +187,7 @@ Pass `--env-file .env` on every compose command for this stack. The command read
 
 There are no accounts and no analytics. The app sets one cookie, `ab_uid`, which holds a random id signed with `COOKIE_SECRET`.
 
-Stored on the server: your brains (title, summary, nodes, notes, links, agent log), your anonymous id, and a last-seen timestamp. Preferences (layout, theme, rounds, panel visibility) and a copy of your id for display stay in your browser's `localStorage`.
+Stored on the server: your brains (title, summary, nodes, notes, links, agent log), your anonymous id, and a last-seen timestamp. A first visit stores only the anonymous id; no brain or sample data is stored until you map an idea. Preferences (layout, theme, rounds, panel visibility) and a copy of your id for display stay in your browser's `localStorage`.
 
 Sent to the LLM provider you configure: the idea text, and node names and notes where the prompt needs them (expanding a node, agent rounds, the takeaway). With no `LLM_API_KEY`, nothing is sent anywhere.
 

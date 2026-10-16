@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- First visit starts with an empty map instead of the Tool Library sample.
+
 ## [0.1.0] - 2026-10-16
 
 ### Added
