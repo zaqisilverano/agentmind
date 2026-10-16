@@ -13,6 +13,8 @@ export interface Ground {
   update(mode: Mode, dt: number): void;
   setBranches(branchIds: string[]): void;
   setHeightField(fn: HeightField | null): void;
+  /** Ground surface height under (x, z) for drop lines: ground y plus the terrain once it is more than half blended in (prototype line 666). */
+  surfaceY(x: number, z: number): number;
   recolor(theme: Theme): void;
   dispose(): void;
 }
@@ -109,6 +111,8 @@ export function createGround(three: { scene: THREE.Scene }, theme: Theme, mode: 
     },
 
     setHeightField(fn) { heightFn = fn; },
+
+    surfaceY(x, z) { return groundY + (heightFn && K > 0.5 ? heightFn(x, z) * K : 0); },
 
     // tick, lines 633–648.
     update(m, dt) {
