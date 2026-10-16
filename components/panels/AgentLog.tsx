@@ -1,7 +1,7 @@
 'use client';
 
 import { AGENTS } from '@/lib/agents/roster';
-import { useStore } from '@/lib/store';
+import { selectIsEmpty, useStore } from '@/lib/store';
 import { AgentIcon } from '@/components/ui/AgentIcon';
 import { Panel } from '@/components/ui/Panel';
 
@@ -13,6 +13,7 @@ export function AgentLog() {
   const open = useStore(s => s.ui.logOpen);
   const setLogOpen = useStore(s => s.setLogOpen);
   const select = useStore(s => s.select);
+  const empty = useStore(selectIsEmpty);
   const entries = (log ?? []).slice(-MAX_SHOWN).reverse();
 
   return (
@@ -35,7 +36,9 @@ export function AgentLog() {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {entries.length === 0 && (
             <div className="p-4 font-serif text-[17px] leading-[1.35] text-pretty text-soft">
-              Press Run agents. Five agents take turns: each round one picks a thin part of the map, adds ideas, and looks for links to other branches. The Strategist closes with a key takeaway.
+              {empty
+                ? 'Map an idea first. Then press Run agents and five agents take turns growing it.'
+                : 'Press Run agents. Five agents take turns: each round one picks a thin part of the map, adds ideas, and looks for links to other branches. The Strategist closes with a key takeaway.'}
             </div>
           )}
           {entries.map(e => {

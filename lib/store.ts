@@ -8,7 +8,9 @@ export type Rounds = 5 | 10 | 20;
 export interface RunState { active: boolean; paused: boolean; round: number; total: number; phase: Phase | null; agent: AgentId | null; status: string }
 /** `busy` marks an LLM call started from the UI (mapping a new brain or expanding a node); one at a time. */
 export type Busy = 'map' | 'expand' | null;
-export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy }
+/** Loading of the user and brain list: `pending` until `/api/me` answers, then `ready`, or `failed` if it could not be reached. */
+export type Boot = 'pending' | 'ready' | 'failed';
+export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy; boot: Boot }
 export interface Provider { source: 'model' | 'fallback'; model?: string }
 /** A failed save. `message` is the server's error text when it sent one (e.g. "this brain is full (300 nodes)"). */
 export interface SyncError { label: string; message?: string; retry: () => Promise<void> }
@@ -41,6 +43,7 @@ export interface Actions {
   setShowPath: (show: boolean) => void;
   setLogOpen: (open: boolean) => void;
   setBusy: (busy: Busy) => void;
+  setBoot: (boot: Boot) => void;
   setRun: (partial: Partial<RunState>) => void;
   setStatus: (text: string) => void;
   setProvider: (meta: Provider) => void;
@@ -58,7 +61,7 @@ export const initialState: State = {
   theme: 'atlas',
   settings: { rounds: 10 },
   run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '' },
-  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null },
+  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null, boot: 'pending' },
   provider: null,
   syncError: null,
 };
@@ -78,6 +81,7 @@ export const useStore = create<State & Actions>()((set) => ({
   setShowPath: (showPath) => set((s) => ({ ui: { ...s.ui, showPath } })),
   setLogOpen: (logOpen) => set((s) => ({ ui: { ...s.ui, logOpen } })),
   setBusy: (busy) => set((s) => ({ ui: { ...s.ui, busy } })),
+  setBoot: (boot) => set((s) => ({ ui: { ...s.ui, boot } })),
   setRun: (partial) => set((s) => ({ run: { ...s.run, ...partial } })),
   setStatus: (status) => set((s) => ({ run: { ...s.run, status } })),
   setProvider: (meta) => set({ provider: meta.model === undefined ? { source: meta.source } : { source: meta.source, model: meta.model } }),
@@ -90,3 +94,9 @@ export const useStore = create<State & Actions>()((set) => ({
       return { brain, brains };
     }),
 }));
+
+/**
+ * The empty state: `/api/me` has answered, no brain is open and none is saved (a first visit, or the last one was
+ * deleted). False while loading, when loading failed, and while switching between brains.
+ */
+export const selectIsEmpty = (s: State): boolean => s.ui.boot === 'ready' && s.brain === null && s.brains.length === 0;

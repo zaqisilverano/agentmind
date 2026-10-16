@@ -33,6 +33,7 @@ export function AppController({ sceneRef }: AppControllerProps) {
         const me = await controllerApi().me();
         if (!live) return;
         useStore.getState().hydrate(me);
+        useStore.getState().setBoot('ready');
         const first = me.brains[0];
         if (first) {
           await selectBrain(first.id);
@@ -42,7 +43,9 @@ export function AppController({ sceneRef }: AppControllerProps) {
           window.dispatchEvent(new CustomEvent(FOCUS_INPUT_EVENT));
         }
       } catch {
-        if (live) useStore.getState().setStatus('Could not reach the server');
+        if (!live) return;
+        useStore.getState().setBoot('failed');
+        useStore.getState().setStatus('Could not reach the server');
       }
     })();
     return () => { live = false; };

@@ -76,6 +76,7 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
     await expect(leftPanel.getByText('Legend — branches')).toHaveCount(0);
     await expect(leftPanel.getByText('Key takeaway')).toHaveCount(0);
     await expect(page.locator('.atlas-label')).toHaveCount(0);
+    await expect(ui(page).agentLog.getByText(/^Map an idea first\./)).toBeVisible();
     await brainButton.click();
     await expect(leftPanel.getByRole('button', { name: '+ New second brain', exact: true })).toBeVisible();
     await expect(leftPanel.getByRole('button', { name: 'Delete this brain', exact: true })).toHaveCount(0);

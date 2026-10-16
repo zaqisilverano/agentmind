@@ -1,6 +1,6 @@
 'use client';
 
-import { useStore } from '@/lib/store';
+import { selectIsEmpty, useStore } from '@/lib/store';
 import { AgentTeam } from './AgentTeam';
 import { BrainDropdown } from './BrainDropdown';
 import { IdentityLine } from './IdentityLine';
@@ -19,8 +19,9 @@ const EMPTY_SUMMARY = 'Type an idea below. The map, the agents and the takeaway 
  */
 export function LeftPanel() {
   const hidden = useStore(s => s.ui.leftHidden);
-  // Empty state: no brain open and none saved (first visit, or the last one was deleted).
-  const empty = useStore(s => s.brain === null && s.brains.length === 0);
+  // Empty state: loaded, no brain open and none saved (first visit, or the last one was deleted). Before /api/me
+  // answers (or when it failed) the panel shows its chrome with no title, not the first-visit copy.
+  const empty = useStore(selectIsEmpty);
   const hasNodes = useStore(s => (s.brain?.nodes.length ?? 0) > 0);
   const title = useStore(s => s.brain?.title ?? (empty ? EMPTY_TITLE : ''));
   const summary = useStore(s => s.brain?.summary ?? (empty ? EMPTY_SUMMARY : ''));

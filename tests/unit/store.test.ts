@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Brain } from '@/engine/types';
 import type { ApiClient } from '@/lib/apiClient';
-import { initialState, useStore } from '@/lib/store';
+import { initialState, selectIsEmpty, useStore } from '@/lib/store';
 import * as sync from '@/lib/sync';
 import { fixtureBrain } from '../fixtures/brain';
 
@@ -332,5 +332,28 @@ describe('switchUser', () => {
     expect(s.brains).toEqual([]);
     expect(s.run).toMatchObject({ active: false, paused: true, status: sync.EMPTY_STATUS });
     expect(api.getBrain).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('selectIsEmpty', () => {
+  it('is false before /api/me answers, true once loaded with no brains, false after a failed load', () => {
+    useStore.setState({ ...initialState });
+    expect(useStore.getState().ui.boot).toBe('pending');
+    expect(selectIsEmpty(useStore.getState())).toBe(false);
+    useStore.getState().hydrate({ user: { id: 'u' }, brains: [] });
+    expect(selectIsEmpty(useStore.getState())).toBe(false);
+    useStore.getState().setBoot('ready');
+    expect(selectIsEmpty(useStore.getState())).toBe(true);
+    useStore.getState().setBoot('failed');
+    expect(selectIsEmpty(useStore.getState())).toBe(false);
+  });
+
+  it('is false while a brain is open or while switching between saved brains', () => {
+    useStore.getState().setBoot('ready');
+    expect(selectIsEmpty(useStore.getState())).toBe(false); // brain open
+    useStore.setState({ brain: null });
+    expect(selectIsEmpty(useStore.getState())).toBe(false); // list still has a row
+    useStore.setState({ brains: [] });
+    expect(selectIsEmpty(useStore.getState())).toBe(true);
   });
 });
