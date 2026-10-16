@@ -95,15 +95,24 @@ export async function createBrain(title: string, summary: string, nodes: IdeaNod
   return created;
 }
 
+/**
+ * Drops the list row at once. When it is the open brain, also closes it at once (pauses the run, clears brain and
+ * selection, invalidates in-flight opens) before the DELETE goes out, then opens the next most recent brain, unless
+ * the user opened or created another one meanwhile.
+ */
 export async function deleteBrain(id: string): Promise<void> {
   const wasCurrent = currentId() === id;
   useStore.setState((s) => ({ brains: s.brains.filter((r) => r.id !== id) }));
-  if (wasCurrent) store().setRun({ active: false, paused: true });
+  let token = selectToken;
+  if (wasCurrent) {
+    token = ++selectToken;
+    store().setRun({ active: false, paused: true });
+    useStore.setState({ brain: null, selected: null });
+  }
   await send('Delete brain', () => api.deleteBrain(id), async () => {
-    if (!wasCurrent || currentId() !== id) return;
+    if (!wasCurrent || token !== selectToken) return;
     const next = store().brains[0];
     if (next) await selectBrain(next.id);
-    else useStore.setState({ brain: null, selected: null });
   });
 }
 

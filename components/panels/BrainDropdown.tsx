@@ -1,13 +1,17 @@
 'use client';
 
 import { FOCUS_INPUT_EVENT } from '@/lib/events';
-import { selectBrain } from '@/lib/sync';
+import { deleteBrain, selectBrain } from '@/lib/sync';
 import { useStore } from '@/lib/store';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { TwoStepDelete } from '@/components/ui/TwoStepDelete';
 
 const pad3 = (n: number) => String(n).padStart(3, '0');
 
-/** "Second brain № 001 ▾" with the saved-brain list, plus the « button that hides the left panel. */
+/**
+ * "Second brain № 001 ▾" with the saved-brain list, "+ New second brain" and a two-step "Delete this brain" for the open
+ * brain, plus the « button that hides the left panel.
+ */
 export function BrainDropdown() {
   const brains = useStore(s => s.brains);
   const currentId = useStore(s => s.brain?.id ?? null);
@@ -25,6 +29,11 @@ export function BrainDropdown() {
     close();
     select(null);
     window.dispatchEvent(new CustomEvent(FOCUS_INPUT_EVENT));
+  };
+
+  const remove = (id: string, close: () => void) => {
+    close();
+    void deleteBrain(id);
   };
 
   const hide = () => {
@@ -73,6 +82,16 @@ export function BrainDropdown() {
             >
               + New second brain
             </button>
+            {currentId !== null && (
+              <TwoStepDelete
+                key={currentId}
+                label="Delete this brain"
+                confirmLabel="Confirm delete?"
+                title="Delete this brain and everything in it"
+                onConfirm={() => remove(currentId, close)}
+                className="border-t border-rule2 text-left"
+              />
+            )}
           </>
         )}
       </Dropdown>

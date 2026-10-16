@@ -29,6 +29,7 @@ const DAMPING = 0.06, MIN_DISTANCE = 5, MAX_DISTANCE = 48, AUTO_ROTATE_SPEED = 0
 const MAX_DT = 100;
 const LAG = 260, FOCUS_RATE = 0.6, CLICK_SLOP = 5; // tick line 739, picking line 535
 const CORE = 'n0', SPAWN_HOLD = 400;
+const EMPTY_BRAIN: Brain = { id: '', number: 0, title: '', summary: '', round: 0, synth: null, nodes: [], links: [], log: [], createdAt: '', updatedAt: '' };
 
 /**
  * Scene lifecycle: renderer, camera, controls, fog, animation loop, resize and dispose.
@@ -214,10 +215,27 @@ export class AtlasScene {
    * Show a brain. `fresh` (default: true for the first brain shown, false after) restarts every node from its parent
    * with the depth/index stagger; otherwise existing nodes keep their place and new ones spawn (at `spawnFrom` if given).
    */
-  setBrain(brain: Brain, opts: { fresh?: boolean; spawnFrom?: Vec3 | null } = {}): void {
+  setBrain(brain: Brain | null, opts: { fresh?: boolean; spawnFrom?: Vec3 | null } = {}): void {
+    if (!brain) {
+      this.clearBrain();
+      return;
+    }
     this.brain = brain;
     this.names = new Map(brain.nodes.map(n => [n.id, n.name]));
     this.applyBrain(opts.fresh ?? !this.shown, opts.spawnFrom ?? this.spawnFrom);
+  }
+
+  /** `setBrain(null)`: removes every node, label, arc and the path, and flattens the ground. The next brain grows in fresh. */
+  private clearBrain(): void {
+    this.brain = null;
+    this.names = new Map();
+    this.spawnFrom = null;
+    this.shown = false;
+    this.nodes?.rebuild({ ...EMPTY_BRAIN }, true, performance.now());
+    this.nodes?.setPath(null);
+    this.labels?.sync([]);
+    this.ground?.setHeightField(null);
+    this.ground?.setBranches([]);
   }
 
   /** Select a node (or clear). Auto-rotate pauses while something is selected; the camera eases toward it. */

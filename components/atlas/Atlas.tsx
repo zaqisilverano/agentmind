@@ -43,10 +43,16 @@ export function Atlas({ brain, mode, theme, selected, showPath, onPick, onReady,
   }, []);
 
   // A different brain (opened or newly mapped) grows in from the core; edits to the same brain keep node positions.
+  // No brain (deleted, or the session was reset) clears the scene.
   const shownId = useRef<string | null>(null);
   useEffect(() => {
     const scene = sceneRef.current;
-    if (!brain || !scene) return;
+    if (!scene) return;
+    if (!brain) {
+      if (shownId.current !== null) scene.setBrain(null);
+      shownId.current = null;
+      return;
+    }
     scene.setBrain(brain, shownId.current !== brain.id ? { fresh: true } : {});
     shownId.current = brain.id;
   }, [brain]);

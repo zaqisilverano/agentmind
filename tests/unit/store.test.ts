@@ -245,12 +245,43 @@ describe('createBrain / selectBrain / deleteBrain', () => {
     const other: Brain = { ...brain, id: 'other', title: 'Other' };
     useStore.setState((s) => ({ brains: [...s.brains, { id: 'other', number: 0, title: 'Other', nodeCount: 1, updatedAt: '' }] }));
     api.getBrain.mockResolvedValue(other);
+    useStore.getState().select('b0');
+    useStore.getState().setRun({ active: true, paused: false });
+    let release!: (v: { ok: true }) => void;
+    api.deleteBrain.mockReturnValue(new Promise((r) => (release = r)));
     const p = sync.deleteBrain(brain.id);
-    expect(useStore.getState().brains.map((b) => b.id)).toEqual(['other']);
+    // Closed before the request returns.
+    const s = useStore.getState();
+    expect(s.brains.map((b) => b.id)).toEqual(['other']);
+    expect(s.brain).toBeNull();
+    expect(s.selected).toBeNull();
+    expect(s.run).toMatchObject({ active: false, paused: true });
+    release({ ok: true });
     await p;
     expect(api.deleteBrain).toHaveBeenCalledWith(brain.id);
     expect(api.getBrain).toHaveBeenCalledWith('other');
     expect(useStore.getState().brain!.id).toBe('other');
+  });
+
+  it('deleteBrain of the last brain leaves nothing open', async () => {
+    await sync.deleteBrain(brain.id);
+    expect(api.deleteBrain).toHaveBeenCalledWith(brain.id);
+    expect(api.getBrain).not.toHaveBeenCalled();
+    expect(useStore.getState()).toMatchObject({ brain: null, brains: [], selected: null });
+  });
+
+  it('deleteBrain does not reopen anything when the user opened another brain while the DELETE was in flight', async () => {
+    const third: Brain = { ...brain, id: 'third', title: 'Third' };
+    useStore.setState((s) => ({ brains: [...s.brains, { id: 'other', number: 2, title: 'Other', nodeCount: 1, updatedAt: '' }, { id: 'third', number: 3, title: 'Third', nodeCount: 1, updatedAt: '' }] }));
+    let release!: (v: { ok: true }) => void;
+    api.deleteBrain.mockReturnValue(new Promise((r) => (release = r)));
+    api.getBrain.mockResolvedValue(third);
+    const p = sync.deleteBrain(brain.id);
+    await sync.selectBrain('third');
+    release({ ok: true });
+    await p;
+    expect(api.getBrain).toHaveBeenCalledTimes(1);
+    expect(useStore.getState().brain!.id).toBe('third');
   });
 
   it('deleteBrain of a non-current brain leaves the open brain alone', async () => {

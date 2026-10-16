@@ -204,4 +204,21 @@ test.describe.serial('Agentic Brainstorm smoke', () => {
       await fresh.close();
     }
   });
+
+  test('11. Delete this brain removes it and opens the next one', async () => {
+    const { leftPanel, brainButton } = ui(page);
+    await expect(brainButton).toContainText('№ 002');
+    await brainButton.click();
+    const del = leftPanel.getByRole('button', { name: 'Delete this brain', exact: true });
+    await del.click();
+    await leftPanel.getByRole('button', { name: 'Confirm delete?', exact: true }).click();
+    await expect(brainButton).toContainText('№ 001', { timeout: 15_000 });
+    await expect(leftPanel.getByText('Tool Library', { exact: true })).toBeVisible();
+    await expect(page.locator('.atlas-label', { hasText: 'Night Market Repair' })).toHaveCount(0);
+    await brainButton.click();
+    await expect(leftPanel.getByRole('button', { name: /Tool Library/ })).toContainText('001');
+    await expect(leftPanel.getByRole('button', { name: /Night Market Repair/ })).toHaveCount(0);
+    await expect(leftPanel.getByRole('button', { name: /^002/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+  });
 });

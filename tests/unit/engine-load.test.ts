@@ -98,6 +98,52 @@ describe('engine modules load', () => {
     expect(layer.children).toHaveLength(0);
   });
 
+  it('labels sync([]) empties the layer, and a later sync refills it', () => {
+    const layer = document.createElement('div');
+    const labels = createLabels(layer, THEMES.atlas);
+    const nodes = sampleBrain('#1B1A17').nodes;
+    labels.sync(nodes);
+    expect(layer.querySelectorAll('div.atlas-label')).toHaveLength(24);
+    labels.sync([]);
+    expect(layer.children).toHaveLength(0);
+    labels.sync(nodes.slice(0, 3));
+    expect(layer.querySelectorAll('div.atlas-label')).toHaveLength(3);
+    labels.dispose();
+  });
+
+  it('setBrain(null) is accepted before mount, and a brain set afterwards still works', () => {
+    const scene = new AtlasScene({ theme: 'atlas', mode: 'constellation' });
+    expect(() => scene.setBrain(null)).not.toThrow();
+    const sample = sampleBrain('#1B1A17');
+    const brain = { id: 'b', number: 1, title: sample.title, summary: sample.summary, round: 0, synth: null, nodes: sample.nodes, links: [], log: [], createdAt: '', updatedAt: '' };
+    expect(() => scene.setBrain(brain)).not.toThrow();
+    expect(() => scene.setBrain(null)).not.toThrow();
+    scene.dispose();
+  });
+
+  it('node graph rebuilt with an empty brain removes every node and link', () => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+    const g = createNodeGraph({ scene, camera }, THEMES.atlas);
+    const meshes = () => { let n = 0; scene.traverse(o => { if (o instanceof THREE.Mesh) n += 1; }); return n; };
+    const empty = meshes();
+    const sample = sampleBrain('#1B1A17');
+    const brain = { id: 'b', number: 1, title: sample.title, summary: sample.summary, round: 0, synth: { path: ['n0', sample.nodes[1].id], verdict: '', brief: '' }, nodes: sample.nodes,
+      links: [{ a: sample.nodes[1].id, b: sample.nodes[2].id, why: '', by: 'researcher' as const }], log: [], createdAt: '', updatedAt: '' };
+    g.rebuild(brain, true, 0);
+    g.setPath(brain.synth.path);
+    for (let now = 16; now < 4000; now += 16) g.layoutTick('constellation', now, 16);
+    expect(meshes()).toBeGreaterThan(empty);
+    g.rebuild({ ...brain, synth: null, nodes: [], links: [] }, true, 4000);
+    g.setPath(null);
+    expect(g.nodes).toHaveLength(0);
+    expect(g.positionOf(sample.nodes[0].id)).toBeUndefined();
+    expect(g.pick(0, 0)).toBeNull();
+    expect(() => g.layoutTick('constellation', 4016, 16)).not.toThrow();
+    expect(meshes()).toBe(empty);
+    g.dispose();
+  });
+
   it('node graph ticks before any brain is set', () => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);

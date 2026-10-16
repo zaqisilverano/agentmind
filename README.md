@@ -190,7 +190,8 @@ Sent to the LLM provider you configure: the idea text, and node names and notes 
 Treat your anonymous ID like a password. It is a bearer credential: anyone who has it can open your brains with Restore ID.
 
 Deleting data:
-- Delete a node and its branches from the node card. The API also supports deleting a whole brain (`DELETE /api/brains/:id`), but the UI has no button for it yet.
+- Delete a node and its branches from the node card.
+- Delete a whole brain from the Second brain menu → Delete this brain (click twice to confirm). It removes the brain with its nodes, notes, links and agent log from the database.
 - Clearing the cookie and `localStorage` cuts the link between you and your data, but does not remove it from the database. Note your ID first if you want to come back.
 - To purge everything stored under your id, email zaqisilverano@gmail.com with the id.
 
