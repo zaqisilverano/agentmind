@@ -28,4 +28,26 @@ describe('RateLimiter', () => {
     t = 3_600_000;
     expect(rl.take('u').ok).toBe(true);
   });
+
+  it('sweeps expired windows every 1000 takes', () => {
+    let t = 0;
+    const rl = new RateLimiter(5, () => t);
+    for (let i = 0; i < 10; i++) rl.take(`k${i}`);
+    expect(rl.size).toBe(10);
+    t = 3_600_000;
+    for (let i = 0; i < 989; i++) rl.take('live');
+    expect(rl.size).toBe(11); // 999 takes so far: no sweep yet
+    rl.take('live');
+    expect(rl.size).toBe(1);
+  });
+
+  it('sweeps on every take once more than 10k keys are tracked', () => {
+    let t = 0;
+    const rl = new RateLimiter(1, () => t);
+    for (let i = 0; i < 10_001; i++) rl.take(`k${i}`);
+    expect(rl.size).toBe(10_001);
+    t = 3_600_000;
+    rl.take('late');
+    expect(rl.size).toBe(1);
+  });
 });

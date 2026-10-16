@@ -3,7 +3,8 @@ import { CrossLinkSchema, IdeaNodeSchema } from '@/lib/brains/schemas';
 
 const AgentId = z.enum(['researcher', 'builder', 'customer', 'skeptic', 'strategist']);
 const Idea = z.object({ title: z.string().min(1).max(80), summary: z.string().max(400) });
-const MapLines = z.string().max(20000);
+// 300 nodes (MAX_NODES_PER_BRAIN) at ~80 characters a line fit with room to spare.
+const MapLines = z.string().max(40000);
 const Links = z.array(CrossLinkSchema).max(400);
 const Nodes = z.array(IdeaNodeSchema).max(400);
 

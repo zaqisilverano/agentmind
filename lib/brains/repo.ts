@@ -3,6 +3,7 @@ import type { Db } from '@/db/client';
 import { brains, links, logEntries, nodes, users } from '@/db/schema';
 import type { AgentId, Brain, IdeaNode, Kind } from '@/engine/types';
 import { HttpError } from '@/lib/api';
+import { MAX_BRAINS_PER_USER } from '@/lib/brains/limits';
 import type { CreateBrainInput, PatchBrainInput } from '@/lib/brains/schemas';
 import { sampleBrain } from '@/lib/sample/toolLibrary';
 
@@ -108,7 +109,8 @@ export async function getBrain(db: Exec, userId: string, id: string): Promise<Br
 export async function createBrain(db: Db, userId: string, body: CreateBrainInput): Promise<Brain> {
   const id = await db.transaction(async (tx) => {
     await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for('update'); // serialises number assignment per user
-    const [{ top }] = await tx.select({ top: max(brains.number) }).from(brains).where(eq(brains.userId, userId));
+    const [{ top, total }] = await tx.select({ top: max(brains.number), total: count() }).from(brains).where(eq(brains.userId, userId));
+    if (total >= MAX_BRAINS_PER_USER) throw new HttpError(400, 'brain limit reached');
     const ids = new Set(body.nodes.map((n) => n.id));
     if (ids.size !== body.nodes.length) throw new HttpError(400, 'duplicate node ids');
     for (const n of body.nodes) if (n.parent !== null && !ids.has(n.parent)) throw new HttpError(400, 'node references unknown parent');

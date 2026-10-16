@@ -2,11 +2,14 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { makeTestDb } from './_harness';
 import { brains, links, logEntries, nodes } from '@/db/schema';
+import { nodeRow } from '@/lib/brains/repo';
 
 process.env.COOKIE_SECRET = 's'.repeat(32);
 process.env.DATABASE_URL = 'postgres://unused';
 process.env.LLM_BASE_URL = 'http://x';
 process.env.LLM_MODEL = 'm';
+// Every asUser() mints a user from the same (unknown) IP; keep the new-session limiter out of the way.
+process.env.RATE_LIMIT_PER_HOUR = '1000';
 
 const me = await import('@/app/api/me/route');
 const list = await import('@/app/api/brains/route');
@@ -205,6 +208,45 @@ describe('brain routes', () => {
     const res = await one.PATCH(new Request('http://t/x', { method: 'PATCH', headers: { cookie, 'content-type': 'text/plain' }, body: '{}' }), { params: Promise.resolve({ id }) });
     expect(res.status).toBe(415);
     expect((await call(one.PATCH, 'PATCH', `/api/brains/${id}`, { title: '' }, cookie, id)).status).toBe(400);
+  });
+
+  describe('caps', () => {
+    const fill = async (brainId: string, upTo: number) => {
+      const have = await countNodes(brainId);
+      const rows = Array.from({ length: upTo - have }, (_, i) => nodeRow(brainId, { ...node(`f${i}`, 'n0', 1), userNote: '', by: null, critic: false } as never));
+      if (rows.length > 0) await db.insert(nodes).values(rows);
+    };
+
+    it('400s a create once the user has 100 brains', async () => {
+      const cookie = await asUser();
+      await sampleId(cookie);
+      const { body } = await call(me.GET as Handler, 'GET', '/api/me', undefined, cookie);
+      const userId = body.data.user.id;
+      await db.insert(brains).values(Array.from({ length: 99 }, (_, i) => ({ userId, number: i + 2, title: `B${i + 2}` })));
+      const res = await call(list.POST, 'POST', '/api/brains', { title: 'One too many', nodes: [node('n0', null, 0)] }, cookie);
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: 'brain limit reached' });
+    });
+
+    it('400s nodes and rounds that would take a brain past 300 nodes, and allows filling it to exactly 300', async () => {
+      const cookie = await asUser();
+      const id = await sampleId(cookie);
+      await fill(id, 298);
+      const log = { seq: 1, agent: 'builder', text: 't', node: 'n0', tag: 'x' };
+      const over = await call(rounds.POST, 'POST', `/api/brains/${id}/rounds`, { round: 1, nodes: [node('o1', 'b0', 2), node('o2', 'b0', 2), node('o3', 'b0', 2)], log }, cookie, id);
+      expect(over.status).toBe(400);
+      expect(over.body).toEqual({ error: 'this brain is full (300 nodes)' });
+      expect(await countNodes(id)).toBe(298);
+      const fits = await call(nodesRoute.POST, 'POST', `/api/brains/${id}/nodes`, { nodes: [node('o1', 'b0', 2), node('o2', 'b0', 2)] }, cookie, id);
+      expect(fits.status).toBe(200);
+      expect(await countNodes(id)).toBe(300);
+      const full = await call(nodesRoute.POST, 'POST', `/api/brains/${id}/nodes`, { nodes: [node('o3', 'b0', 2)] }, cookie, id);
+      expect(full.status).toBe(400);
+      expect(full.body).toEqual({ error: 'this brain is full (300 nodes)' });
+      // A round that only re-sends existing nodes still saves its log on a full brain.
+      const empty = await call(rounds.POST, 'POST', `/api/brains/${id}/rounds`, { round: 1, nodes: [node('o1', 'b0', 2)], log }, cookie, id);
+      expect(empty.status).toBe(200);
+    });
   });
 
   describe('same-origin check behind a proxy / standalone bind address', () => {

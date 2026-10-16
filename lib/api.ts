@@ -1,15 +1,8 @@
 import { ZodError } from 'zod';
+import { HttpError } from '@/lib/httpError';
 import { requireUser } from '@/lib/identity';
 
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'HttpError';
-  }
-}
+export { HttpError };
 
 export const json = (data: unknown, init?: ResponseInit): Response => Response.json({ data }, init);
 export const fail = (status: number, message: string): Response => Response.json({ error: message }, { status });
@@ -46,7 +39,11 @@ export async function guard(run: () => Promise<Response>): Promise<Response> {
     return await run();
   } catch (e) {
     if (e instanceof ZodError) return fail(400, e.issues.map((i) => `${i.path.join('.') || '(body)'}: ${i.message}`).join('; '));
-    if (e instanceof HttpError) return fail(e.status, e.message);
+    if (e instanceof HttpError) {
+      const res = fail(e.status, e.message);
+      for (const [k, v] of Object.entries(e.headers)) res.headers.set(k, v);
+      return res;
+    }
     console.error(e);
     return fail(500, 'internal error');
   }

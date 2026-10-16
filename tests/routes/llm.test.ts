@@ -10,6 +10,7 @@ process.env.LLM_API_KEY = '';
 process.env.RATE_LIMIT_PER_HOUR = '1';
 
 const map = await import('@/app/api/llm/map/route');
+const me = await import('@/app/api/me/route');
 
 const post = (idea: string, headers: Record<string, string> = {}) =>
   map.POST(new Request('http://t/api/llm/map', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify({ idea }) }));
@@ -40,5 +41,13 @@ describe('POST /api/llm/map', () => {
     const second = await post('A tool library', h);
     expect(second.status).toBe(429);
     expect(Number(second.headers.get('retry-after'))).toBeGreaterThan(0);
+  });
+
+  it('checks the IP first and does not spend the user budget when the IP is limited', async () => {
+    expect((await post('A tool library', { 'x-forwarded-for': '5.5.5.5' })).status).toBe(200);
+    const fresh = await me.GET(new Request('http://t/api/me', { headers: { 'x-forwarded-for': '6.6.6.6' } }));
+    const cookie = fresh.headers.get('set-cookie')!.split(';')[0];
+    expect((await post('A tool library', { cookie, 'x-forwarded-for': '5.5.5.5' })).status).toBe(429);
+    expect((await post('A tool library', { cookie, 'x-forwarded-for': '7.7.7.7' })).status).toBe(200);
   });
 });

@@ -2,7 +2,10 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/db/client';
 import { users } from '@/db/schema';
+import { clientIp } from '@/lib/clientIp';
 import { getEnv } from '@/lib/env';
+import { HttpError } from '@/lib/httpError';
+import { getIdentityLimiter } from '@/lib/rateLimit';
 
 export const COOKIE_NAME = 'ab_uid';
 const MAX_AGE_SECONDS = 31536000;
@@ -43,7 +46,10 @@ function readCookie(req: Request): string | null {
   return null;
 }
 
-/** Resolves the caller's user, creating one (and a Set-Cookie value) when the cookie is missing or unknown. */
+/**
+ * Resolves the caller's user, creating one (and a Set-Cookie value) when the cookie is missing or unknown.
+ * Creating a user costs a token from the per-IP identity limiter; when it is spent this throws 429 with Retry-After.
+ */
 export async function requireUser(req: Request): Promise<{ userId: string; setCookie?: string }> {
   const db = getDb();
   const raw = readCookie(req);
@@ -52,6 +58,8 @@ export async function requireUser(req: Request): Promise<{ userId: string; setCo
     const touched = await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, existing)).returning({ id: users.id });
     if (touched.length > 0) return { userId: existing };
   }
+  const budget = getIdentityLimiter().take(clientIp(req));
+  if (!budget.ok) throw new HttpError(429, 'too many new sessions', { 'Retry-After': String(budget.retryAfter) });
   const [created] = await db.insert(users).values({}).returning({ id: users.id });
   return { userId: created.id, setCookie: cookieHeader(created.id, { secure: isSecure() }) };
 }

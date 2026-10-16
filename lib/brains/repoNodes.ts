@@ -4,6 +4,7 @@ import { brains, links, logEntries, nodes } from '@/db/schema';
 import type { Brain } from '@/engine/types';
 import { HttpError } from '@/lib/api';
 import type { LinkInput, NodeInput, PatchNodeInput, RoundInput, TakeawayInput } from '@/lib/brains/schemas';
+import { BRAIN_FULL_MESSAGE, MAX_NODES_PER_BRAIN } from '@/lib/brains/limits';
 import { assertOwned, checkParents, getBrain, nodeRow, type Tx } from '@/lib/brains/repo';
 
 const sqlExcluded = (col: string) => sql.raw(`excluded."${col}"`);
@@ -16,11 +17,15 @@ async function brainNodeIds(tx: Tx, brainId: string): Promise<Set<string>> {
   return new Set(rows.map((r) => r.id));
 }
 
-/** Inserts nodes whose ids are new; existing ids are ignored. Parents must already exist or come earlier in the batch. */
+/**
+ * Inserts nodes whose ids are new; existing ids are ignored. Parents must already exist or come earlier in the batch.
+ * 400 when the brain would hold more than MAX_NODES_PER_BRAIN nodes (the caller's transaction holds the brain lock).
+ */
 async function insertNodes(tx: Tx, brainId: string, batch: NodeInput[]): Promise<void> {
   if (batch.length === 0) return;
   const existing = await brainNodeIds(tx, brainId);
   const fresh = batch.filter((n) => !existing.has(n.id));
+  if (existing.size + new Set(fresh.map((n) => n.id)).size > MAX_NODES_PER_BRAIN && fresh.length > 0) throw new HttpError(400, BRAIN_FULL_MESSAGE);
   checkParents(existing, fresh);
   if (fresh.length > 0) await tx.insert(nodes).values(fresh.map((n) => nodeRow(brainId, n))).onConflictDoNothing();
 }
