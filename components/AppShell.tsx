@@ -14,7 +14,7 @@ import type { AtlasScene } from '@/engine/AtlasScene';
 import { useStore } from '@/lib/store';
 
 /**
- * The single screen. Z-order: canvas 0 (its label layers stack inside it), frame 1, panels 2 (node card 3), open menus 6.
+ * The single screen. Z-order: canvas 0 (its label layers stack inside it), frame 1, panels 2 (node card 3, toolbar 4 so its menus open over the card), open menus 6.
  * Focus mode leaves only the canvas, the frame and the Exit focus button; the controller stays mounted so a run continues.
  */
 export function AppShell() {

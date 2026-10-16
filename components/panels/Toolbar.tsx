@@ -33,7 +33,8 @@ export function Toolbar() {
 
   return (
     // The outer box is the menus' anchor; it has no border, so menus line up with the bar's outer edge.
-    <div className="fixed top-10 right-11 z-[2]">
+    // z 4: its fixed box is the menus' stacking context, so it must sit above the node card (3) for menus to open over it.
+    <div className="fixed top-10 right-11 z-[4]">
       <div className="flex border border-ink bg-panel shadow-[var(--shadow3)]">
         <Dropdown id="view" triggerClassName={TRIGGER} menuClassName="w-[242px]" label={open => <><span className={KEY}>View</span>{modeLabel} {caret(open)}</>}>
           {close => MODES.map(([id, label]) => (
