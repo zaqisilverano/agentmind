@@ -41,7 +41,7 @@ Optional: `sh scripts/install-hooks.sh` installs a pre-commit hook that blocks s
 
 ## Configuration
 
-Copy `.env.example` to `.env`. The app validates the environment at startup and exits on invalid values.
+Copy `.env.example` to `.env`. The environment is validated on first use; the container exits at the migrate step if it is invalid.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -174,10 +174,10 @@ docker compose --env-file .env -f docker/compose.yml up -d --build
 Backup:
 
 ```sh
-docker compose -f docker/compose.yml exec db pg_dump -U atlas atlas > backup.sql
+docker compose --env-file .env -f docker/compose.yml exec db pg_dump -U atlas atlas > backup.sql
 ```
 
-Use the `POSTGRES_USER` and `POSTGRES_DB` values from your `.env` if you changed them.
+Pass `--env-file .env` on every compose command for this stack. Use the `POSTGRES_USER` and `POSTGRES_DB` values from your `.env` if you changed them.
 
 ## Privacy
 
@@ -186,6 +186,8 @@ There are no accounts and no analytics. The app sets one cookie, `ab_uid`, which
 Stored on the server: your brains (title, summary, nodes, notes, links, agent log), your anonymous id, and a last-seen timestamp. Preferences (layout, theme, rounds, panel visibility) and a copy of your id for display stay in your browser's `localStorage`.
 
 Sent to the LLM provider you configure: the idea text, and node names and notes where the prompt needs them (expanding a node, agent rounds, the takeaway). With no `LLM_API_KEY`, nothing is sent anywhere.
+
+Treat your anonymous ID like a password. It is a bearer credential: anyone who has it can open your brains with Restore ID.
 
 Deleting data:
 - Delete a node and its branches from the node card. The API also supports deleting a whole brain (`DELETE /api/brains/:id`), but the UI has no button for it yet.
@@ -200,7 +202,7 @@ If you run your own instance, you are the operator of that data.
 - Rate limits on LLM routes, per user and per IP.
 - JSON bodies are capped at 256 KB and validated with Zod.
 - JSON POST routes require `application/json` and reject a cross-origin `Origin` header.
-- The cookie is signed with HMAC-SHA256, httpOnly, SameSite=Lax, and Secure in production.
+- The cookie is signed with HMAC-SHA256, httpOnly, SameSite=Lax, and Secure in production. The anonymous ID itself is a bearer credential (Restore ID accepts it without further proof), so keep it private.
 - `scripts/check-secrets.sh` is an optional pre-commit hook, and CI runs gitleaks.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
