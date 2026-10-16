@@ -20,10 +20,14 @@ export interface DropdownProps {
   triggerClassName?: string;
   /** Menu classes, typically a width. */
   menuClassName?: string;
+  /** Gap in px between the anchor's bottom edge and the menu (toolbar menus 12, the brain list 4). */
+  menuGap?: number;
+  /** Which theme shadow the menu casts. */
+  menuShadow?: 3 | 5;
 }
 
 /** A trigger button and its menu. Closes on outside pointer-down and on Esc. */
-export function Dropdown({ id, label, children, align = 'right', title, className = 'flex', triggerClassName = '', menuClassName = '' }: DropdownProps) {
+export function Dropdown({ id, label, children, align = 'right', title, className = 'flex', triggerClassName = '', menuClassName = '', menuGap = 12, menuShadow = 5 }: DropdownProps) {
   const open = useStore(s => s.ui.openDropdown === id);
   const setOpenDropdown = useStore(s => s.setOpenDropdown);
   const ref = useRef<HTMLDivElement>(null);
@@ -59,7 +63,11 @@ export function Dropdown({ id, label, children, align = 'right', title, classNam
         {typeof label === 'function' ? label(open) : label}
       </button>
       {open && (
-        <Panel className={`absolute top-[calc(100%+12px)] z-[6] flex flex-col ${align === 'left' ? 'left-0' : 'right-0'} ${menuClassName}`}>
+        <Panel
+          shadow={menuShadow}
+          style={{ top: `calc(100% + ${menuGap}px)` }}
+          className={`absolute z-[6] flex flex-col ${align === 'left' ? 'left-0' : 'right-0'} ${menuClassName}`}
+        >
           {typeof children === 'function' ? children(close) : children}
         </Panel>
       )}

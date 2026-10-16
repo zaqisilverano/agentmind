@@ -3,6 +3,7 @@
 import { Atlas } from '@/components/atlas/Atlas';
 import { FocusExit } from '@/components/panels/FocusExit';
 import { Hint } from '@/components/panels/Hint';
+import { LeftPanel } from '@/components/panels/LeftPanel';
 import { Toolbar } from '@/components/panels/Toolbar';
 import { useStore } from '@/lib/store';
 
@@ -17,15 +18,16 @@ export function AppShell() {
   const selected = useStore(s => s.selected);
   const select = useStore(s => s.select);
   const focus = useStore(s => s.ui.focus);
+  const showPath = useStore(s => s.ui.showPath);
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-bg font-mono leading-[normal] text-ink">
-      <Atlas className="absolute inset-0 z-0" brain={brain} mode={mode} theme={theme} selected={selected} showPath onPick={select} />
+      <Atlas className="absolute inset-0 z-0" brain={brain} mode={mode} theme={theme} selected={selected} showPath={showPath} onPick={select} />
       <div className="pointer-events-none fixed inset-[14px] z-[1] border border-rule" />
       <div className="pointer-events-none fixed inset-[19px] z-[1] border border-rule2" />
       {!focus && (
         <>
-          {/* Task 17: <LeftPanel /> */}
+          <LeftPanel />
           <Toolbar />
           {/* Task 18: <NodeCard /> or <AgentLog />, <InputBar />, <AppController /> */}
           <Hint />

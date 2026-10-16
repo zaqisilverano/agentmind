@@ -6,7 +6,7 @@ export type Phase = 'plan' | 'diverge' | 'connect' | 'takeaway';
 export type Rounds = 5 | 10 | 20;
 
 export interface RunState { active: boolean; paused: boolean; round: number; total: number; phase: Phase | null; agent: AgentId | null; status: string }
-export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null }
+export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean }
 export interface Provider { source: 'model' | 'fallback'; model?: string }
 export interface SyncError { label: string; retry: () => Promise<void> }
 
@@ -35,6 +35,7 @@ export interface Actions {
   setFocus: (focus: boolean) => void;
   setOpenDropdown: (id: string | null) => void;
   setTakeawayOpen: (open: boolean) => void;
+  setShowPath: (show: boolean) => void;
   setLogOpen: (open: boolean) => void;
   setRun: (partial: Partial<RunState>) => void;
   setStatus: (text: string) => void;
@@ -53,7 +54,7 @@ export const initialState: State = {
   theme: 'atlas',
   settings: { rounds: 10 },
   run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '' },
-  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null },
+  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true },
   provider: null,
   syncError: null,
 };
@@ -70,6 +71,7 @@ export const useStore = create<State & Actions>()((set) => ({
   setFocus: (focus) => set((s) => ({ ui: { ...s.ui, focus } })),
   setOpenDropdown: (openDropdown) => set((s) => ({ ui: { ...s.ui, openDropdown } })),
   setTakeawayOpen: (takeawayOpen) => set((s) => ({ ui: { ...s.ui, takeawayOpen } })),
+  setShowPath: (showPath) => set((s) => ({ ui: { ...s.ui, showPath } })),
   setLogOpen: (logOpen) => set((s) => ({ ui: { ...s.ui, logOpen } })),
   setRun: (partial) => set((s) => ({ run: { ...s.run, ...partial } })),
   setStatus: (status) => set((s) => ({ run: { ...s.run, status } })),
