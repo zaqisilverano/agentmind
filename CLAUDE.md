@@ -15,7 +15,7 @@ engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, 
 - `pnpm eval` prompt eval against the configured LLM provider (not in CI)
 - `pnpm db:generate` · `pnpm db:migrate` · `pnpm build` (runs `prebuild`) · `pnpm gen:theme` · `pnpm build:export-layout`
 - `sh scripts/prod-smoke.sh` builds the production image and smoke-tests it against the dev Postgres.
-- CI (`.github/workflows/ci.yml`) runs lint, typecheck, test, build, gitleaks and the production-image smoke test.
+- CI (`.github/workflows/ci.yml`) runs lint, typecheck, test, build, gitleaks and the production-image smoke test. `.github/workflows/deploy.yml` then deploys main to the VPS with `scripts/deploy.sh` (secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS, DEPLOY_DOMAIN).
 
 ## Generated files
 `app/theme.generated.css` (from `engine/themes.ts`, `pnpm gen:theme`) and `public/export/layout.js` (from `engine/layout.ts`, `pnpm build:export-layout`) are generated. Never edit them by hand. Tests fail when the checked-in copies are stale, so regenerate and commit them after changing their sources.

@@ -1,0 +1,55 @@
+name: Deploy
+
+# Deploys main to the VPS after a green CI run on a push. Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY,
+# DEPLOY_KNOWN_HOSTS, DEPLOY_DOMAIN (see README "Continuous deployment").
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # Only for scripts/deploy.sh; the server builds from its own checkout.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Install the SSH key and known hosts
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # Deploys exactly the commit CI tested, not whatever main is by now.
+      - name: Deploy over SSH
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- $SHA" < scripts/deploy.sh
+
+      - name: Health check
+        env:
+          DEPLOY_DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS "https://$DEPLOY_DOMAIN/api/health" | grep '"db":true'; then exit 0; fi
+            sleep 5
+          done
+          echo "health check failed"
+          exit 1

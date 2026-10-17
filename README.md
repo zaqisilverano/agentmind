@@ -167,7 +167,7 @@ lib/
   identity.ts, rateLimit.ts, env.ts, securityHeaders.ts
 db/              Drizzle schema, client, migrations, migrate script
 docker/          Dockerfile, compose.yml (production), compose.dev.yml (Postgres only), Caddyfile
-scripts/         theme and export bundlers, eval, secrets hook
+scripts/         theme and export bundlers, eval, secrets hook, prod smoke test, deploy
 tests/           unit/ and routes/ (Vitest), e2e/ (Playwright)
 docs/            design spec, plan, prototype reference
 middleware.ts    per-request CSP nonce
@@ -201,7 +201,7 @@ middleware.ts    per-request CSP nonce
 - `pnpm eval`: sends the prompts in `scripts/eval-prompts.json` to the configured provider and prints source, attempts and latency per call. It reads `.env` and is not part of CI.
 - `sh scripts/prod-smoke.sh`: builds the production Docker image, runs it against the dev Postgres (published on port 3200 on macOS) and checks health, the anonymous cookie and one write behind a proxy-style `Host` header.
 
-CI runs lint, typecheck, `pnpm test`, `pnpm build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 16 service.
+CI runs lint, typecheck, `pnpm test`, `pnpm build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 16 service. A green CI run on `main` triggers the deploy workflow (see [Continuous deployment](#continuous-deployment)).
 
 ## Deployment
 
@@ -239,6 +239,20 @@ docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -
 ```
 
 Pass `--env-file .env` on every compose command for this stack. The command reads the Postgres user and database from the container's own environment, and `-T` keeps the dump free of terminal control characters.
+
+### Continuous deployment
+
+`.github/workflows/deploy.yml` deploys to the VPS after every green CI run on a push to `main`. It installs an SSH key, pipes `scripts/deploy.sh` to the server over SSH with the commit CI tested, then checks `https://<DEPLOY_DOMAIN>/api/health` for `"db":true`. Deploys run one at a time. On the server, `scripts/deploy.sh` resets `~/apps/agentmind` (a clone with an `origin` remote on GitHub and a production `.env`) to that commit, rebuilds and restarts the stack with `docker/compose.yml` and `docker/compose.proxy.yml`, waits up to 90 s for the `agentmind` container to report healthy, and prunes dangling images. It uses the classic Docker builder (`DOCKER_BUILDKIT=0`).
+
+The workflow needs these repository secrets:
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST` | Server host name or IP for SSH. |
+| `DEPLOY_USER` | SSH user that owns `~/apps/agentmind` and can run `docker`. |
+| `DEPLOY_SSH_KEY` | Private key (ed25519) whose public key is in that user's `authorized_keys`. |
+| `DEPLOY_KNOWN_HOSTS` | The server's host key line(s), for example from `ssh-keyscan -t ed25519 <host>`. Check the fingerprint. |
+| `DEPLOY_DOMAIN` | Public host name for the health check, for example `agentmind.zaqi.build`. |
 
 ## Privacy
 

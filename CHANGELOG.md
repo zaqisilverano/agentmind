@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Continuous deployment: `.github/workflows/deploy.yml` deploys `main` to the VPS over SSH with `scripts/deploy.sh` after a green CI run, then checks `/api/health`.
 - Mobile layout with bottom sheets: below 768 px a top bar, a phase bar, a tab bar (Map, Agents, Log, Key, Run) and one bottom sheet at a time replace the desktop panels.
 - Clickable nodes in the standalone 3D HTML export: a click or tap selects a node (pulsing reticle, hot label, unrelated labels dimmed) and opens a detail card with kind and level, path, AI note, My notes, child chips and cross-links, styled by the chosen design (a bottom sheet below 640 px).
 
