@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { toHtml3d, THREE_VERSION } from '@/lib/export/html3d';
+import { VIEWER_JS } from '@/lib/export/viewer3d';
 import { THEMES } from '@/engine/themes';
 import { bundleLayout } from '@/scripts/layoutBundle';
 import { fixtureBrain } from '../fixtures/brain';
@@ -56,6 +57,33 @@ describe('toHtml3d', () => {
     expect(html).toContain('JetBrains+Mono');
     for (const m of ['constellation', 'orbit', 'terrain']) expect(html).toContain(`data-m="${m}"`);
     expect(html).toContain('Drag to orbit');
+  });
+  it('has the node detail card container and the click hint', () => {
+    expect(html).toContain('<aside id="node-card"');
+    expect(html).toContain("'MY NOTES'");
+    expect(html).toContain('#node-card{');
+    expect(html).toContain(THEMES.observatory.shadow5);
+    expect(html).toContain('Drag to orbit · Scroll to zoom · Click a node');
+  });
+  it('the viewer script renders the card with MY NOTES and LINKS headings, text only through textContent', () => {
+    expect(VIEWER_JS).toContain("'MY NOTES'");
+    expect(VIEWER_JS).toContain("'LINKS'");
+    expect(VIEWER_JS).toContain("getElementById('node-card')");
+    expect(VIEWER_JS).not.toContain('innerHTML');
+    expect(VIEWER_JS).not.toMatch(/[`]|\$\{|<\/script/i);
+  });
+  it('keeps a userNote with markup and a closing script tag escaped in the JSON', () => {
+    const b = fixtureBrain();
+    const userNote = 'Line one <b>x</b>\nline two </script><script>alert(2)</script>';
+    b.nodes = b.nodes.map(n => (n.id === 'n0' ? { ...n, userNote } : n));
+    const h = toHtml3d(b, 'atlas', 'constellation', STUB);
+    const raw = jsonOf(h);
+    expect(raw).not.toContain('<');
+    expect(raw).toContain('\\u003cb>x\\u003c/b>');
+    expect(raw).toContain('\\u003c/script>');
+    expect(JSON.parse(raw).nodes.find((n: { id: string }) => n.id === 'n0').userNote).toBe(userNote);
+    expect(h.match(/<\/script>/g)!.length).toBe(h.match(/<script/g)!.length);
+    expect(h).not.toContain('<b>x</b>');
   });
   it('a layoutJs that contains a closing script tag cannot break out either', () => {
     const h = toHtml3d(brain, 'atlas', 'terrain', 'var x="</script><i>";');

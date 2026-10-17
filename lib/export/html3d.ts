@@ -29,6 +29,25 @@ function css(t: (typeof THEMES)[ThemeId]): string {
     'nav button:last-child{border-right:0}',
     `nav button.on{background:${t.ink};color:${t.panel}}`,
     `#h{position:fixed;right:32px;bottom:24px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${t.muted};pointer-events:none}`,
+    // Node detail card: square corners, 1 px ink border, the theme's hard shadow; a bottom sheet below 640 px.
+    `#node-card{position:fixed;right:32px;top:84px;width:340px;max-height:calc(100% - 140px);overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:16px 16px 18px;background:${t.panel};color:${t.ink};border:1px solid ${t.ink};border-radius:0;box-shadow:${t.shadow5};z-index:2}`,
+    '#node-card[hidden]{display:none}',
+    `#node-card .hd{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${t.muted}}`,
+    `#node-card .dot{width:10px;height:10px;flex:none;border-radius:50%;border:1px solid ${t.ink}}`,
+    `#node-card .x{margin-left:auto;flex:none;width:26px;height:26px;padding:0;font:16px/1 ${mono};border:1px solid ${t.ink};border-radius:0;background:${t.bg};color:${t.ink};cursor:pointer}`,
+    `#node-card .p{font-size:10px;letter-spacing:.06em;color:${t.muted}}`,
+    `#node-card .nm{font:400 32px/1 ${serif};overflow-wrap:anywhere}`,
+    `#node-card .no{font:17px/1.35 ${serif};color:${t.soft}}`,
+    `#node-card .sec{display:flex;flex-direction:column;gap:6px;border-top:1px dashed ${t.rule};padding-top:10px}`,
+    `#node-card .sh{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:${t.muted}}`,
+    `#node-card .un{font:16px/1.35 ${serif};white-space:pre-wrap;overflow-wrap:anywhere}`,
+    '#node-card .ch{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}',
+    `#node-card .ch button{font:10.5px ${mono};letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border:1px solid ${t.ink};border-radius:0;background:${t.bg};color:${t.ink};cursor:pointer}`,
+    `#node-card .x:hover,#node-card .ch button:hover{background:${t.ink};color:${t.panel}}`,
+    `#node-card .lk{display:block;padding:0;line-height:1.4;border:0;background:none;text-align:left;color:${t.ink};cursor:pointer;font:11px ${mono};letter-spacing:.06em;text-transform:uppercase}`,
+    `#node-card .lk:hover{color:${t.accent}}`,
+    `#node-card .lk span{font:15px ${serif};letter-spacing:0;text-transform:none;color:${t.soft}}`,
+    '@media (max-width:639px){#node-card{left:0;right:0;bottom:0;top:auto;width:auto;max-height:55%;border-width:1px 0 0}}',
   ].join('');
 }
 
@@ -41,7 +60,7 @@ export function toHtml3d(brain: Brain, theme: ThemeId, mode: Mode, layoutJs: str
   const data = { title: brain.title, summary: brain.summary, nodes: brain.nodes, links: brain.links, theme, mode };
   const cdn = `https://unpkg.com/three@${THREE_VERSION}/`;
   const importMap = { imports: { three: `${cdn}build/three.module.js`, 'three/addons/': `${cdn}examples/jsm/` } };
-  const palette = { bg: t.bg, panel: t.panel, ink: t.ink, accent: t.accent, line: t.line, ring: t.ring };
+  const palette = { bg: t.bg, panel: t.panel, ink: t.ink, muted: t.muted, accent: t.accent, hot: t.hot, line: t.line, ring: t.ring };
   return [
     '<!doctype html>',
     `<html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`,
@@ -51,7 +70,8 @@ export function toHtml3d(brain: Brain, theme: ThemeId, mode: Mode, layoutJs: str
     '<div id="c"></div><div id="l"></div>',
     `<header><small>Second brain № ${String(brain.number || 1).padStart(3, '0')}</small><h1>${esc(brain.title)}</h1><p>${esc(brain.summary)}</p></header>`,
     '<nav><button data-m="constellation">Constellation</button><button data-m="orbit">Orbit</button><button data-m="terrain">Terrain</button></nav>',
-    '<div id="h">Drag to orbit · Scroll to zoom</div>',
+    '<aside id="node-card" aria-live="polite" hidden></aside>',
+    '<div id="h">Drag to orbit · Scroll to zoom · Click a node</div>',
     `<${SCRIPT} id="brain" type="application/json">${inlineJson(data)}</${SCRIPT}>`,
     `<${SCRIPT}>${layoutJs.replace(/<\/script/gi, '<\\/script')}</${SCRIPT}>`,
     `<${SCRIPT} type="importmap">${inlineJson(importMap)}</${SCRIPT}>`,
