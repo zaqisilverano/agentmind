@@ -210,12 +210,13 @@ test.describe.serial('Agentic Brainstorm on a phone', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('7. focus mode hides the chrome and ⤢ brings it back', async () => {
+  test('7. focus mode hides the chrome and × brings it back', async () => {
     const { shell, focusButton } = ui(page);
     await focusButton.click();
     await expect(shell).toHaveCount(0);
     const exit = page.getByRole('button', { name: 'Exit focus' });
     await expect(exit).toBeVisible();
+    await expect(exit).toHaveText('×');
     await expect(page.locator('canvas')).toBeVisible();
     await exit.click();
     await expect(shell).toBeVisible();
