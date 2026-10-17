@@ -115,7 +115,8 @@ function select(id) {
   }
   card.setAttribute('aria-label', n.name); card.hidden = false; card.scrollTop = 0;
 }
-// Picking: raycast the fill spheres on pointerup when the pointer moved less than 6 px (a drag orbits instead).
+// Picking: raycast the fill spheres on a primary-button pointerup that moved less than 5 px since pointerdown (the app's
+// CLICK_SLOP; a drag orbits instead). A cancelled pointer (e.g. a touch taken over by the browser) never selects.
 const cv = r.domElement, ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function pick(e) {
   const b = cv.getBoundingClientRect(); ndc.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1);
@@ -123,8 +124,9 @@ function pick(e) {
   return h ? h.object.userData.id : null;
 }
 let down = null;
-cv.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; cv.style.cursor = ''; });
-cv.addEventListener('pointerup', e => { if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 6) select(pick(e)); down = null; });
+cv.addEventListener('pointerdown', e => { down = e.button === 0 && e.isPrimary ? [e.clientX, e.clientY] : null; cv.style.cursor = ''; });
+cv.addEventListener('pointerup', e => { if (down && e.button === 0 && e.isPrimary && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 5) select(pick(e)); down = null; });
+cv.addEventListener('pointercancel', () => { down = null; });
 cv.addEventListener('pointermove', e => { if (!e.buttons && e.pointerType !== 'touch') cv.style.cursor = pick(e) ? 'pointer' : ''; });
 addEventListener('keydown', e => { if (e.key === 'Escape' && sel) select(null); });
 `;
