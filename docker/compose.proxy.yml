@@ -3,14 +3,14 @@
 #   docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --build
 # It skips the bundled Caddy (profile "caddy") and attaches the app to the
 # existing proxy's Docker network so the proxy can reach it as
-# http://agentic-brainstorm:3000. Set PROXY_NETWORK in .env to that network's name.
+# http://agentmind:3000. Set PROXY_NETWORK in .env to that network's name.
 # The proxy must forward Host, X-Forwarded-Host, X-Forwarded-Proto and set
 # X-Forwarded-For to the real client IP (see README "Deployment").
 services:
   caddy:
     profiles: ["caddy"]
   app:
-    container_name: agentic-brainstorm
+    container_name: agentmind
     networks:
       - default
       - proxy

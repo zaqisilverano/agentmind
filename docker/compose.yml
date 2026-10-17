@@ -4,6 +4,9 @@
 # Needs a .env at the repo root (copy .env.example). Under compose, DATABASE_URL must be
 #   postgres://atlas:atlas@db:5432/atlas
 # and COOKIE_SECRET must be changed from the example value.
+# Project name: containers and volumes are prefixed agentmind- (volumes agentmind_ab_pg and so on).
+name: agentmind
+
 services:
   app:
     build:

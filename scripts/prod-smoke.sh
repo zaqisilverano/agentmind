@@ -6,11 +6,11 @@
 #   CI (Linux):  a postgres:16 service on 127.0.0.1:5432; the container uses --network host and port 3000.
 #   macOS:       docker compose -f docker/compose.dev.yml up -d; the container publishes 3200 and reaches the
 #                database through host.docker.internal.
-# Overrides: SMOKE_IMAGE (default ab:ci), SMOKE_SKIP_BUILD=1, SMOKE_PORT, SMOKE_DATABASE_URL.
+# Overrides: SMOKE_IMAGE (default agentmind:ci), SMOKE_SKIP_BUILD=1, SMOKE_PORT, SMOKE_DATABASE_URL.
 set -eu
 
-image=${SMOKE_IMAGE:-ab:ci}
-name="ab-smoke-$$"
+image=${SMOKE_IMAGE:-agentmind:ci}
+name="agentmind-smoke-$$"
 tmp=$(mktemp -d)
 
 if [ "$(uname -s)" = "Linux" ]; then
@@ -78,8 +78,8 @@ echo "ok: cookie set, sample brain listed"
 step "POST /api/llm/map behind a proxy Host answers from the fallback"
 code=$(curl -sS -o "$tmp/map.json" -D "$tmp/map.headers" -w '%{http_code}' -X POST \
   -H "Cookie: $cookie" \
-  -H 'Host: brainstorm.example.com' \
-  -H 'Origin: https://brainstorm.example.com' \
+  -H 'Host: agentmind.example.com' \
+  -H 'Origin: https://agentmind.example.com' \
   -H 'content-type: application/json' \
   -d '{"idea":"A night market"}' \
   "$base/api/llm/map")
@@ -91,7 +91,7 @@ echo "ok: 200, source fallback, same user"
 step "a cross-origin write is refused"
 code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
   -H "Cookie: $cookie" \
-  -H 'Host: brainstorm.example.com' \
+  -H 'Host: agentmind.example.com' \
   -H 'Origin: https://evil.example' \
   -H 'content-type: application/json' \
   -d '{"idea":"A night market"}' \

@@ -1,4 +1,6 @@
-# Agentic Brainstorm Implementation Plan
+# agentmind Implementation Plan
+
+> Historical record. Written for the project when it was called Agentic Brainstorm; it was renamed to agentmind on 2026-10-17. Names and commands below are as executed at the time.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +10,7 @@
 
 **Tech Stack:** Next.js 15, React 19, TypeScript strict, Tailwind v4, three, Zustand, Zod, Drizzle ORM + postgres, Vitest, @electric-sql/pglite, Playwright, Docker Compose, Caddy.
 
-**Spec:** `docs/superpowers/specs/2026-10-16-agentic-brainstorm-design.md` (read it first; this plan argues from it). Prototype reference: `docs/reference/prototype/idea-atlas-agents.prototype.js` (line numbers below refer to this file), `AGENTS-SPEC.md`, `IMPLEMENTATION.md`.
+**Spec:** `docs/superpowers/specs/2026-10-16-agentmind-design.md` (read it first; this plan argues from it). Prototype reference: `docs/reference/prototype/idea-atlas-agents.prototype.js` (line numbers below refer to this file), `AGENTS-SPEC.md`, `IMPLEMENTATION.md`.
 
 ## Global Constraints
 

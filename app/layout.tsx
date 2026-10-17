@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Agentic Brainstorm',
+  title: 'agentmind',
   description: 'Type an idea. Agents grow it into a 3D map.',
 };
 

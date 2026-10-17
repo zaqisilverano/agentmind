@@ -1,5 +1,5 @@
 # CLAUDE.md
-Public open-source project by Zaqi Silverano (MIT). Spec: docs/superpowers/specs/. Plan: docs/superpowers/plans/. Prototype reference: docs/reference/prototype/ (where spec and prototype disagree on visuals or behaviour, the prototype wins).
+agentmind (github.com/zaqisilverano/agentmind, brand written lowercase): public open-source project by Zaqi Silverano (MIT). Spec: docs/superpowers/specs/. Plan: docs/superpowers/plans/. Prototype reference: docs/reference/prototype/ (where spec and prototype disagree on visuals or behaviour, the prototype wins).
 
 ## Layout
 - `app/` routes and API (`app/api/{me,brains,llm,health}`), `components/` React UI, `engine/` Three.js scene and pure layout, `lib/` store, sync, llm, agents, export, sample, brains, `db/` Drizzle schema, client, migrations, `docker/`, `scripts/`, `tests/{unit,routes,e2e}`.

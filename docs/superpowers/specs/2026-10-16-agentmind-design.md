@@ -1,6 +1,8 @@
-# Agentic Brainstorm — Design Spec
+# agentmind — Design Spec
 
 Date: 2026-10-16. Status: approved by Zaqi Silverano in brainstorming; implementation follows the plan in `docs/superpowers/plans/`.
+
+> Renamed to agentmind on 2026-10-17 (repository `zaqisilverano/agentmind`). The rest of this spec keeps its original wording.
 
 ## 1. Goal
 
@@ -23,7 +25,7 @@ The visual design, interaction details and agent behaviour are fixed by the prot
 ## 3. Project structure
 
 ```
-agentic-brainstorm/
+agentmind/
   app/
     layout.tsx            html[data-theme], fonts, ThemeProvider, store hydration
     page.tsx              the single screen: <Atlas/> + panels

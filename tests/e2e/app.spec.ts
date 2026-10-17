@@ -44,7 +44,7 @@ async function pick(page: Page, trigger: RegExp, item: string): Promise<void> {
   await ui(page).toolbar.getByRole('button', { name: item, exact: true }).click();
 }
 
-test.describe.serial('Agentic Brainstorm smoke', () => {
+test.describe.serial('agentmind smoke', () => {
   let context: BrowserContext;
   let page: Page;
   const errors: string[] = [];

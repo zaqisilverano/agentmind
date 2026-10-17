@@ -55,4 +55,4 @@ jobs:
       - name: Build the image and smoke-test it
         run: sh scripts/prod-smoke.sh
         env:
-          SMOKE_IMAGE: ab:ci
+          SMOKE_IMAGE: agentmind:ci

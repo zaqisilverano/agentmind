@@ -34,7 +34,7 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `docs/media/mobile-${name}.png` });
 }
 
-test.describe.serial('Agentic Brainstorm on a phone', () => {
+test.describe.serial('agentmind on a phone', () => {
   let context: BrowserContext;
   let page: Page;
   const errors: string[] = [];

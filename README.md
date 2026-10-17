@@ -1,8 +1,8 @@
-# Agentic Brainstorm
+# agentmind
 
 Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.
 
-[![CI](https://github.com/zaqisilverano/agentic-brainstorm/actions/workflows/ci.yml/badge.svg)](https://github.com/zaqisilverano/agentic-brainstorm/actions/workflows/ci.yml)
+[![CI](https://github.com/zaqisilverano/agentmind/actions/workflows/ci.yml/badge.svg)](https://github.com/zaqisilverano/agentmind/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ![Screenshot](docs/media/screenshot.png)
@@ -54,7 +54,7 @@ Copy `.env.example` to `.env`. The environment is validated on first use; the co
 | `LLM_API_KEY` | empty | Bearer token for the provider. Empty means the offline fallback. |
 | `LLM_REASONING_EFFORT` | unset | Optional: `low`, `medium` or `high`. Sent as `chat_template_kwargs.reasoning_effort` only when set. |
 | `RATE_LIMIT_PER_HOUR` | `60` | LLM requests per hour, applied per user and per client IP. Kept in process memory. |
-| `DOMAIN` | `brainstorm.example.com` | Production only. Public host name that Caddy serves and gets a TLS certificate for. |
+| `DOMAIN` | `agentmind.zaqi.build` | Production only. Public host name that Caddy serves and gets a TLS certificate for. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `atlas`, `atlas`, `atlas` | Production only. Credentials for the Postgres container in `docker/compose.yml`. Not in `.env.example`; set them in `.env` if you change them, and keep `DATABASE_URL` in step. |
 
 ## Run with K2 Horizon

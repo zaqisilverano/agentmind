@@ -2,14 +2,14 @@
  * Headless smoke check for the engine dev page (not part of the test suite).
  * Expects `npm run dev` already running on http://localhost:3000; it starts nothing itself.
  * Run: npx tsx scripts/dev-engine-check.ts   (once: npx playwright install chromium)
- * Screenshots go to .superpowers/sdd/2026-10-16-agentic-brainstorm/shots/ (git-ignored).
+ * Screenshots go to .superpowers/sdd/2026-10-16-agentmind/shots/ (git-ignored).
  */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from '@playwright/test';
 
 const URL = process.env.DEV_URL ?? 'http://localhost:3000/dev/engine';
-const SHOTS = join(process.cwd(), '.superpowers/sdd/2026-10-16-agentic-brainstorm/shots');
+const SHOTS = join(process.cwd(), '.superpowers/sdd/2026-10-16-agentmind/shots');
 type AtlasLike = import('@/engine/AtlasScene').AtlasScene;
 
 const MODES = ['constellation', 'orbit', 'terrain'];

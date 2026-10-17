@@ -29,7 +29,7 @@ async function main() {
   const brain = fixtureBrain();
   brain.nodes = brain.nodes.map(n => (n.depth === 0 ? { ...n, userNote: USER_NOTE } : n));
   const core = brain.nodes.find(n => n.depth === 0)!;
-  const file = join(tmpdir(), 'agentic-brainstorm-export-check-3d.html');
+  const file = join(tmpdir(), 'agentmind-export-check-3d.html');
   writeFileSync(file, toHtml3d(brain, 'atlas', 'constellation', readFileSync('public/export/layout.js', 'utf8')));
   console.log('page', file);
 

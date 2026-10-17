@@ -263,23 +263,23 @@ describe('brain routes', () => {
 
     it('accepts an Origin that matches the Host header even when req.url carries the bind address', async () => {
       const cookie = await asUser();
-      const res = await create(cookie, { host: 'brainstorm.example.com', origin: 'https://brainstorm.example.com' });
+      const res = await create(cookie, { host: 'agentmind.example.com', origin: 'https://agentmind.example.com' });
       expect(res.status).toBe(200);
       expect((await res.json()).data.title).toBe('Proxied');
     });
 
     it('prefers X-Forwarded-Host over Host', async () => {
       const cookie = await asUser();
-      const ok = await create(cookie, { host: 'app:3000', 'x-forwarded-host': 'brainstorm.example.com', origin: 'https://brainstorm.example.com' });
+      const ok = await create(cookie, { host: 'app:3000', 'x-forwarded-host': 'agentmind.example.com', origin: 'https://agentmind.example.com' });
       expect(ok.status).toBe(200);
-      const bad = await create(cookie, { host: 'brainstorm.example.com', 'x-forwarded-host': 'other.example.com', origin: 'https://brainstorm.example.com' });
+      const bad = await create(cookie, { host: 'agentmind.example.com', 'x-forwarded-host': 'other.example.com', origin: 'https://agentmind.example.com' });
       expect(bad.status).toBe(403);
     });
 
     it('403s a mismatched host, an Origin of null and an unparsable Origin', async () => {
       const cookie = await asUser();
       for (const origin of ['https://evil.example', 'null', 'not a url']) {
-        const res = await create(cookie, { host: 'brainstorm.example.com', origin });
+        const res = await create(cookie, { host: 'agentmind.example.com', origin });
         expect(res.status).toBe(403);
         expect(await res.json()).toEqual({ error: 'bad origin' });
       }
