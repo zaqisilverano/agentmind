@@ -8,18 +8,15 @@ import { toMarkdown } from '@/lib/export/markdown';
 import { providerText } from '@/lib/grow';
 import { useStore, type Rounds } from '@/lib/store';
 
-const ROUNDS: Rounds[] = [5, 10, 20];
+export const ROUNDS: Rounds[] = [5, 10, 20];
 const DL = 'flex-1 cursor-pointer border border-ink bg-panel px-2 py-[9px] font-mono text-[10.5px] uppercase leading-[normal] tracking-[0.12em] text-ink hover:bg-ink hover:text-panel disabled:cursor-default disabled:opacity-40 disabled:pointer-events-none';
 
 const Heading = ({ children }: { children: ReactNode }) => (
   <div className="text-[10px] uppercase tracking-[0.18em] text-muted">{children}</div>
 );
 
-/** Settings dropdown body: rounds per run, brain downloads, and which LLM answered last. */
-export function SettingsMenu() {
-  const rounds = useStore(s => s.settings.rounds);
-  const setRounds = useStore(s => s.setRounds);
-  const provider = useStore(s => s.provider);
+/** Download handlers for the open brain (Markdown, JSON, standalone 3D HTML); each does nothing without a brain. */
+export function useDownloads() {
   const hasBrain = useStore(s => s.brain !== null);
 
   const save = (ext: string, mime: string, render: typeof toMarkdown) => {
@@ -31,6 +28,21 @@ export function SettingsMenu() {
     const { brain, theme, mode, setStatus } = useStore.getState();
     if (brain) downloadHtml3d(brain, theme, mode).catch(() => setStatus('Could not build the 3D HTML export. Try again.'));
   };
+
+  return {
+    hasBrain,
+    saveMarkdown: () => save('md', 'text/markdown', toMarkdown),
+    saveJson: () => save('json', 'application/json', toJson),
+    saveHtml3d,
+  };
+}
+
+/** Settings dropdown body: rounds per run, brain downloads, and which LLM answered last. */
+export function SettingsMenu() {
+  const rounds = useStore(s => s.settings.rounds);
+  const setRounds = useStore(s => s.setRounds);
+  const provider = useStore(s => s.provider);
+  const { hasBrain, saveMarkdown, saveJson, saveHtml3d } = useDownloads();
 
   return (
     <>
@@ -53,8 +65,8 @@ export function SettingsMenu() {
       <div className="flex flex-col gap-2 border-b border-rule2 p-[14px]">
         <Heading>Download brain</Heading>
         <div className="flex gap-1.5">
-          <button type="button" className={DL} disabled={!hasBrain} onClick={() => save('md', 'text/markdown', toMarkdown)}>Markdown</button>
-          <button type="button" className={DL} disabled={!hasBrain} onClick={() => save('json', 'application/json', toJson)}>JSON</button>
+          <button type="button" className={DL} disabled={!hasBrain} onClick={saveMarkdown}>Markdown</button>
+          <button type="button" className={DL} disabled={!hasBrain} onClick={saveJson}>JSON</button>
           <button type="button" className={DL} disabled={!hasBrain} onClick={saveHtml3d}>3D HTML</button>
         </div>
       </div>

@@ -17,20 +17,36 @@ function useStatusText(): string {
   return prefix + (run.status || (round ? `${round} rounds · ${linkCount} links` : 'Agents standing by'));
 }
 
-/**
- * Bottom bar: "New brain" maps a typed idea into a new brain; with a node selected it becomes "Ask node" and grows
- * that node from the question. ▶ Run agents / ❚❚ Pause drives the controller's runner. A failed save shows
- * "Not saved · Retry" next to the status.
- */
-export function InputBar() {
-  const selectedName = useStore(s => (s.selected ? s.brain?.nodes.find(n => n.id === s.selected)?.name ?? null : null));
-  const selected = useStore(s => s.selected);
-  const hasBrain = useStore(s => s.brain !== null);
-  const active = useStore(s => s.run.active);
-  const busy = useStore(s => s.ui.busy);
-  const running = useStore(s => s.run.active || s.run.phase !== null);
+/** The status text (role="status") and, after a failed save, the "Not saved · Retry" chip. Shared by both layouts. */
+export function StatusLine({ className }: { className: string }) {
   const syncError = useStore(s => s.syncError);
   const status = useStatusText();
+  return (
+    <div className={className}>
+      <span className="min-w-0 truncate" role="status">{status}</span>
+      {syncError && (
+        <button
+          type="button"
+          title={`${syncError.label} failed. Retry`}
+          onClick={() => void syncError.retry()}
+          className="flex-none cursor-pointer border border-ink bg-accent px-1.5 py-px font-mono text-[9.5px] uppercase leading-[normal] tracking-[0.12em] text-on-accent hover:bg-ink hover:text-panel"
+        >
+          Not saved · Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * State and actions of the idea input, shared by both layouts. With no node selected, submitting maps the typed idea
+ * into a new brain; with one selected it grows that node from the question. Focuses on FOCUS_INPUT_EVENT.
+ */
+export function useIdeaInput() {
+  const selectedName = useStore(s => (s.selected ? s.brain?.nodes.find(n => n.id === s.selected)?.name ?? null : null));
+  const selected = useStore(s => s.selected);
+  const busy = useStore(s => s.ui.busy);
+  const running = useStore(s => s.run.active || s.run.phase !== null);
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -51,29 +67,38 @@ export function InputBar() {
     if (await mapIdea(idea)) setText('');
   };
 
-  const toggleRun = () => {
+  const asking = selectedName !== null;
+  return {
+    text, setText, inputRef, submit, asking, busy, running,
+    placeholder: asking ? `Ask a follow-up about “${selectedName}” to grow it…` : 'Type an idea — a startup, a story, a plan…',
+    actionLabel: busy === 'map' ? 'Mapping…' : busy === 'expand' ? 'Growing…' : asking ? 'Grow →' : 'Map it →',
+  };
+}
+
+/** ▶ Run / ❚❚ Pause: whether a run is active, whether the button is usable, and the toggle. */
+export function useRunToggle() {
+  const hasBrain = useStore(s => s.brain !== null);
+  const active = useStore(s => s.run.active);
+  const toggle = () => {
     const c = getController();
     if (active) c?.pause();
     else c?.startRun();
   };
+  return { active, disabled: !hasBrain && !active, toggle };
+}
 
-  const asking = selectedName !== null;
+/**
+ * Bottom bar: "New brain" maps a typed idea into a new brain; with a node selected it becomes "Ask node" and grows
+ * that node from the question. ▶ Run agents / ❚❚ Pause drives the controller's runner. A failed save shows
+ * "Not saved · Retry" next to the status.
+ */
+export function InputBar() {
+  const { text, setText, inputRef, submit, asking, busy, running, placeholder, actionLabel } = useIdeaInput();
+  const run = useRunToggle();
 
   return (
     <div data-testid="input-bar" className="fixed bottom-11 left-1/2 z-[2] flex w-[min(720px,calc(100%-88px))] -translate-x-1/2 flex-col gap-2">
-      <div className="flex min-h-[14px] items-center justify-center gap-2 text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-muted">
-        <span className="min-w-0 truncate" role="status">{status}</span>
-        {syncError && (
-          <button
-            type="button"
-            title={`${syncError.label} failed. Retry`}
-            onClick={() => void syncError.retry()}
-            className="flex-none cursor-pointer border border-ink bg-accent px-1.5 py-px font-mono text-[9.5px] uppercase leading-[normal] tracking-[0.12em] text-on-accent hover:bg-ink hover:text-panel"
-          >
-            Not saved · Retry
-          </button>
-        )}
-      </div>
+      <StatusLine className="flex min-h-[14px] items-center justify-center gap-2 text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-muted" />
       <div className="flex items-stretch border border-ink bg-panel shadow-[var(--shadow5)]">
         <div className="flex items-center whitespace-nowrap border-r border-ink px-[14px] text-[10px] uppercase tracking-[0.16em]">{asking ? 'Ask node' : 'New brain'}</div>
         <input
@@ -82,7 +107,7 @@ export function InputBar() {
           maxLength={asking ? 300 : 2000}
           disabled={busy === 'map'}
           aria-label={asking ? 'Ask this node' : 'New idea'}
-          placeholder={asking ? `Ask a follow-up about “${selectedName}” to grow it…` : 'Type an idea — a startup, a story, a plan…'}
+          placeholder={placeholder}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') void submit(); }}
           className="min-w-0 flex-1 border-none bg-transparent px-4 py-[14px] font-serif text-[24px] text-ink outline-none placeholder:text-muted placeholder:italic disabled:opacity-60"
@@ -94,16 +119,16 @@ export function InputBar() {
           onClick={() => void submit()}
           className={`${ACTION} bg-accent px-[22px] text-on-accent hover:bg-ink hover:text-panel disabled:opacity-60`}
         >
-          {busy === 'map' ? 'Mapping…' : busy === 'expand' ? 'Growing…' : asking ? 'Grow →' : 'Map it →'}
+          {actionLabel}
         </button>
         <button
           type="button"
           title="Run agents"
-          disabled={!hasBrain && !active}
-          onClick={toggleRun}
+          disabled={run.disabled}
+          onClick={run.toggle}
           className={`${ACTION} bg-ink px-[18px] text-panel hover:bg-accent hover:text-on-accent disabled:opacity-40`}
         >
-          {active ? '❚❚ Pause' : '▶ Run agents'}
+          {run.active ? '❚❚ Pause' : '▶ Run agents'}
         </button>
       </div>
     </div>

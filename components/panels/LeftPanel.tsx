@@ -7,8 +7,8 @@ import { IdentityLine } from './IdentityLine';
 import { Legend } from './Legend';
 import { TakeawayCard } from './TakeawayCard';
 
-const EMPTY_TITLE = 'Your second brain';
-const EMPTY_SUMMARY = 'Type an idea below. The map, the agents and the takeaway grow from there.';
+export const EMPTY_TITLE = 'Your second brain';
+export const EMPTY_SUMMARY = 'Type an idea below. The map, the agents and the takeaway grow from there.';
 
 /**
  * Top-left column on the page background: brain dropdown, title and summary, key takeaway, agent team,
