@@ -1,15 +1,25 @@
-# agentmind
+<div align="center">
 
-Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.
+<img src="docs/media/hero.png" width="100%" alt="agentmind — A team of agents for every idea. Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.">
+
+<br><br>
+
+**[Quick start](#quick-start)** · **[Agents](#meet-the-agents)** · **[Configuration](#configuration)** · **[How it works](#how-it-works)** · **[Deployment](#deployment)** · **[Privacy](#privacy)**
+
+<br>
 
 [![CI](https://github.com/zaqisilverano/agentmind/actions/workflows/ci.yml/badge.svg)](https://github.com/zaqisilverano/agentmind/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-1B1A17.svg)](LICENSE)
+![Node 22](https://img.shields.io/badge/node-22-00C46A.svg)
+![Next.js 15](https://img.shields.io/badge/Next.js-15-1B1A17.svg)
+![three.js](https://img.shields.io/badge/three.js-r186-1E7BFF.svg)
+![Postgres 16](https://img.shields.io/badge/Postgres-16-8B5CF6.svg)
+
+<br>
 
 ![Screenshot](docs/media/screenshot.png)
 
-![Demo](docs/media/demo.gif)
-
-(record before release: `docs/media/screenshot.png` and `docs/media/demo.gif` do not exist yet)
+</div>
 
 ## What it does
 
@@ -17,13 +27,39 @@ Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.
 
 **The agents.** Five animated agents (Researcher, Builder, Customer, Skeptic, Strategist) take turns for 5, 10 or 20 rounds. Each round one agent picks a thin spot, walks to it, adds sub-ideas, and may draw a link between two branches. At the end the Strategist writes a Key takeaway and the map highlights the strongest path from the idea to one leaf.
 
-**Persistence.** A first visit starts with an empty map: nothing is saved until you map your first idea. Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file.
+**Persistence.** A first visit starts with an empty map: nothing is saved until you map your first idea. Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file. The 3D file opens offline in any browser: orbit the map, switch layouts, and click a node to read its kind, path, AI note, your notes, child ideas and cross-links.
 
-**On a phone.** Below 768 px wide the panels fold into a top bar, a tab bar (Map, Agents, Log, Key, Run) and bottom sheets; the 3D map stays full screen and responds to touch.
+**On a phone.** Below 768 px wide the panels fold into a top bar, a phase bar, a tab bar (Map, Agents, Log, Key, Run) and one bottom sheet at a time; the 3D map stays full screen and responds to touch.
+
+<p align="center"><img src="docs/media/mobile-run.png" width="260" alt="agentmind on a phone: an agent run with the top bar, phase bar, map and tab bar"></p>
 
 Without an LLM API key the app still works: it falls back to a local keyword parser and template ideas, so you can try everything offline.
 
-Stack: Next.js 15 (App Router), React 19, TypeScript, Tailwind v4, three, Zustand, Zod, Drizzle with Postgres 16, Vitest with pglite, Playwright, Docker Compose with Caddy. Node 22.
+## Meet the agents
+
+| | Agent | Shape | Works on |
+|:-:|---|---|---|
+| <img src="docs/media/agent-researcher.svg" width="32"> | **Researcher** | Blue hexagon | Problem and People branches |
+| <img src="docs/media/agent-builder.svg" width="32"> | **Builder** | Green rounded square | Mechanism |
+| <img src="docs/media/agent-customer.svg" width="32"> | **Customer** | Orange flower | Value |
+| <img src="docs/media/agent-skeptic.svg" width="32"> | **Skeptic** | Black ghost | Risk |
+| <img src="docs/media/agent-strategist.svg" width="32"> | **Strategist** | Purple star | Next step and the Key takeaway |
+
+Each round: **plan → travel → think → spawn → link → done**.
+
+<!-- TODO: demo.gif -->
+
+## Views and themes
+
+| Layouts | Themes |
+|---|---|
+| **Constellation**: branches as stars on a sphere | **Atlas**: paper, ink, red accent |
+| **Orbit**: each branch circles the core idea | **Observatory**: night sky, amber accent |
+| **Terrain**: branches rise as peaks on a landscape | **Blueprint**: cobalt, yellow accent |
+
+## Stack
+
+Next.js 15 (App Router), React 19, TypeScript, Tailwind v4, three, Zustand, Zod, Drizzle with Postgres 16, Vitest with pglite, Playwright, Docker Compose with Caddy. Node 22.
 
 ## Quick start
 
@@ -57,7 +93,10 @@ Copy `.env.example` to `.env`. The environment is validated on first use; the co
 | `DOMAIN` | `agentmind.zaqi.build` | Production only. Public host name that Caddy serves and gets a TLS certificate for. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `atlas`, `atlas`, `atlas` | Production only. Credentials for the Postgres container in `docker/compose.yml`. Not in `.env.example`; set them in `.env` if you change them, and keep `DATABASE_URL` in step. |
 
-## Run with K2 Horizon
+<details>
+<summary><b>Run with K2 Horizon</b></summary>
+
+
 
 Create an API key at https://platform.ifm.ai and use the model id as listed there.
 
@@ -68,7 +107,12 @@ LLM_MODEL=IFM/K2-Horizon-375B-A23B
 
 Then set `LLM_API_KEY` in `.env` to your key.
 
-## Run with Ollama
+</details>
+
+<details>
+<summary><b>Run with Ollama</b></summary>
+
+
 
 ```sh
 LLM_BASE_URL=http://localhost:11434/v1
@@ -76,6 +120,8 @@ LLM_MODEL=<your model>
 ```
 
 Set `LLM_API_KEY` to any non-empty value, for example `ollama`. Ollama ignores it, but an empty key makes the app use the offline fallback. The model has to follow JSON instructions well; replies that fail validation are retried once, then replaced by the fallback. Run `pnpm eval` to see how a model does.
+
+</details>
 
 ## How it works
 
@@ -168,6 +214,7 @@ docker compose --env-file .env -f docker/compose.yml up -d --build
 ```
 
 - Pass `--env-file .env`. Compose reads `${DOMAIN}` and the Postgres variables from it for interpolation.
+- The Compose project is named `agentmind`, so the containers are `agentmind-app-1`, `agentmind-db-1` and `agentmind-caddy-1`, and the database volume is `agentmind_ab_pg`.
 - Caddy listens on ports 80 and 443 and gets a TLS certificate for `DOMAIN`. Point the domain's DNS at the server first.
 - Migrations run when the app container starts, under a Postgres advisory lock.
 - `DATABASE_URL` must use the service name `db`, not `localhost`.
@@ -176,6 +223,14 @@ docker compose --env-file .env -f docker/compose.yml up -d --build
 - Caddy refuses request bodies over 300 KB; the app caps JSON bodies at 256 KB.
 - Limits for anonymous users: new sessions per client IP per hour are half of the `RATE_LIMIT_PER_HOUR` setting (at least 10), each user can keep 100 brains, and a brain holds up to 300 nodes.
 - The rate limiter lives in process memory, so run a single app instance.
+
+Behind an existing reverse proxy, skip the bundled Caddy and attach the app to the proxy's Docker network instead. Set `PROXY_NETWORK` in `.env` to that network's name, then:
+
+```sh
+docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --build
+```
+
+The app container is then named `agentmind` and the proxy reaches it at `http://agentmind:3000`. The proxy must forward `Host` and `X-Forwarded-Host`, set `X-Forwarded-Proto`, and set `X-Forwarded-For` to the real client IP.
 
 Backup:
 
@@ -231,3 +286,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Please follow the [Code of Conduct](CODE
 ## License
 
 [MIT](LICENSE), copyright 2026 Zaqi Silverano.
+
+<div align="center">
+<br>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/mark-dark.svg">
+  <img src="docs/media/mark-light.svg" width="28" alt="">
+</picture>
+<br>
+<sub>agent<i>mind</i> · your second brain, mapped</sub>
+</div>
