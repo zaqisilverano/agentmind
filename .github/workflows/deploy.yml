@@ -41,7 +41,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           SHA: ${{ github.event.workflow_run.head_sha }}
-        run: ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- $SHA" < scripts/deploy.sh
+        run: ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- $SHA" < scripts/deploy.sh
 
       - name: Health check
         env:

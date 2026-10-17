@@ -5,30 +5,37 @@
 # GitHub and a production .env, and an existing reverse proxy (docker/compose.proxy.yml).
 set -euo pipefail
 
-ref=${1:-origin/main}
-cd ~/apps/agentmind
+# The whole script is a function so bash parses it completely before running anything: when piped over
+# `bash -s`, a child that reads stdin (docker, git) could otherwise swallow the rest of the script.
 
-git fetch --all -q
-git reset -q --hard "$ref"
-echo "deploy: at $(git log -1 --format='%h %s')"
+main() {
+  ref=${1:-origin/main}
+  cd ~/apps/agentmind
 
-# The server's snap Docker cannot do BuildKit registry lookups; the base images are preloaded, so use the classic builder.
-export DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0
-docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --build
+  git fetch --all -q </dev/null
+  git reset -q --hard "$ref"
+  echo "deploy: at $(git log -1 --format='%h %s')"
 
-echo "deploy: waiting up to 90 s for agentmind to be healthy"
-status=unknown
-for _ in $(seq 1 45); do
-  status=$(docker inspect --format '{{.State.Health.Status}}' agentmind 2>/dev/null || echo missing)
-  [ "$status" = healthy ] && break
-  sleep 2
-done
-docker ps --filter 'name=^agentmind$'
-if [ "$status" != healthy ]; then
-  echo "deploy: agentmind is $status after 90 s"
-  docker logs --tail 50 agentmind || true
-  exit 1
-fi
+  # The server's snap Docker cannot do BuildKit registry lookups; the base images are preloaded, so use the classic builder.
+  export DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0
+  docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --build </dev/null
 
-docker image prune -f
-echo "deploy: done"
+  echo "deploy: waiting up to 90 s for agentmind to be healthy"
+  status=unknown
+  for _ in $(seq 1 45); do
+    status=$(docker inspect --format '{{.State.Health.Status}}' agentmind 2>/dev/null || echo missing)
+    [ "$status" = healthy ] && break
+    sleep 2
+  done
+  docker ps --filter 'name=^agentmind$'
+  if [ "$status" != healthy ]; then
+    echo "deploy: agentmind is $status after 90 s"
+    docker logs --tail 50 agentmind </dev/null || true
+    exit 1
+  fi
+
+  docker image prune -f </dev/null
+  echo "deploy: done"
+}
+
+main "$@"

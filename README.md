@@ -254,6 +254,9 @@ The workflow needs these repository secrets:
 | `DEPLOY_KNOWN_HOSTS` | The server's host key line(s), for example from `ssh-keyscan -t ed25519 <host>`. Check the fingerprint. |
 | `DEPLOY_DOMAIN` | Public host name for the health check, for example `agentmind.zaqi.build`. |
 
+> [!IMPORTANT]
+> First deploy on a server that ran the old `agentic-brainstorm` stack: stop the old compose project (`docker compose -p docker … down`), point your reverse proxy at `agentmind:3000`, make sure `~/apps/agentmind` is a clone with an `origin` remote on GitHub, and copy the Postgres volume from `docker_ab_pg` to `agentmind_ab_pg` if you want to keep existing brains.
+
 ## Privacy
 
 There are no accounts and no analytics. The app sets one cookie, `ab_uid`, which holds a random id signed with `COOKIE_SECRET`.
