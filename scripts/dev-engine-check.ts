@@ -1,7 +1,7 @@
 /**
  * Headless smoke check for the engine dev page (not part of the test suite).
- * Expects `npm run dev` already running on http://localhost:3000; it starts nothing itself.
- * Run: npx tsx scripts/dev-engine-check.ts   (once: npx playwright install chromium)
+ * Expects `pnpm dev` already running on http://localhost:3000; it starts nothing itself.
+ * Run: pnpm exec tsx scripts/dev-engine-check.ts   (once: pnpm exec playwright install chromium)
  * Screenshots go to .superpowers/sdd/2026-10-16-agentmind/shots/ (git-ignored).
  */
 import { mkdirSync } from 'node:fs';

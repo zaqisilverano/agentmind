@@ -27,14 +27,14 @@ Stack: Next.js 15 (App Router), React 19, TypeScript, Tailwind v4, three, Zustan
 
 ## Quick start
 
-Requirements: Node 22, npm, Docker.
+Requirements: Node 22, pnpm 10, Docker.
 
 ```sh
 cp .env.example .env
 docker compose -f docker/compose.dev.yml up -d   # Postgres only
-npm install
-npm run db:migrate
-npm run dev
+pnpm install
+pnpm db:migrate
+pnpm dev
 ```
 
 Open http://localhost:3000. The first visit starts with an empty map; type an idea and press Enter to map your first brain. With `LLM_API_KEY` empty you get the offline fallback.
@@ -75,7 +75,7 @@ LLM_BASE_URL=http://localhost:11434/v1
 LLM_MODEL=<your model>
 ```
 
-Set `LLM_API_KEY` to any non-empty value, for example `ollama`. Ollama ignores it, but an empty key makes the app use the offline fallback. The model has to follow JSON instructions well; replies that fail validation are retried once, then replaced by the fallback. Run `npm run eval` to see how a model does.
+Set `LLM_API_KEY` to any non-empty value, for example `ollama`. Ollama ignores it, but an empty key makes the app use the offline fallback. The model has to follow JSON instructions well; replies that fail validation are retried once, then replaced by the fallback. Run `pnpm eval` to see how a model does.
 
 ## How it works
 
@@ -133,29 +133,29 @@ middleware.ts    per-request CSP nonce
 
 | Script | What it does |
 |---|---|
-| `npm run dev` | Next.js dev server on port 3000. |
-| `npm run build` | Production build. Runs `prebuild` first, which writes `public/export/layout.js`. |
-| `npm start` | Serves the production build. |
-| `npm run lint` | ESLint via `next lint`. |
-| `npm run typecheck` | `tsc --noEmit`. |
-| `npm test` | Vitest, once. |
-| `npm run test:watch` | Vitest in watch mode. |
-| `npm run test:e2e` | Playwright tests. |
-| `npm run db:generate` | Generate a Drizzle migration from `db/schema.ts`. |
-| `npm run db:migrate` | Apply migrations to `DATABASE_URL`. |
-| `npm run gen:theme` | Regenerate `app/theme.generated.css` from `engine/themes.ts`. |
-| `npm run build:export-layout` | Regenerate `public/export/layout.js` from `engine/layout.ts`. |
-| `npm run build:migrate` | Bundle the migrator into `.next/standalone/db/` (used by the Dockerfile). |
-| `npm run eval` | Run the prompt eval against the configured provider. |
+| `pnpm dev` | Next.js dev server on port 3000. |
+| `pnpm build` | Production build. Runs `prebuild` first, which writes `public/export/layout.js`. |
+| `pnpm start` | Serves the production build. |
+| `pnpm lint` | ESLint via `next lint`. |
+| `pnpm typecheck` | `tsc --noEmit`. |
+| `pnpm test` | Vitest, once. |
+| `pnpm test:watch` | Vitest in watch mode. |
+| `pnpm test:e2e` | Playwright tests. |
+| `pnpm db:generate` | Generate a Drizzle migration from `db/schema.ts`. |
+| `pnpm db:migrate` | Apply migrations to `DATABASE_URL`. |
+| `pnpm gen:theme` | Regenerate `app/theme.generated.css` from `engine/themes.ts`. |
+| `pnpm build:export-layout` | Regenerate `public/export/layout.js` from `engine/layout.ts`. |
+| `pnpm build:migrate` | Bundle the migrator into `.next/standalone/db/` (used by the Dockerfile). |
+| `pnpm eval` | Run the prompt eval against the configured provider. |
 
 ## Testing
 
-- `npm test`: unit and route tests. Routes run on pglite (in-process Postgres with the real migrations), so no database is needed.
-- `npm run test:e2e`: Playwright. Starts its own dev server on port 3100 (no dev server needed, port 3000 can stay in use) and applies the migrations itself. Needs the dev Postgres: `docker compose -f docker/compose.dev.yml up -d`.
-- `npm run eval`: sends the prompts in `scripts/eval-prompts.json` to the configured provider and prints source, attempts and latency per call. It reads `.env` and is not part of CI.
+- `pnpm test`: unit and route tests. Routes run on pglite (in-process Postgres with the real migrations), so no database is needed.
+- `pnpm test:e2e`: Playwright. Starts its own dev server on port 3100 (no dev server needed, port 3000 can stay in use) and applies the migrations itself. Needs the dev Postgres: `docker compose -f docker/compose.dev.yml up -d`.
+- `pnpm eval`: sends the prompts in `scripts/eval-prompts.json` to the configured provider and prints source, attempts and latency per call. It reads `.env` and is not part of CI.
 - `sh scripts/prod-smoke.sh`: builds the production Docker image, runs it against the dev Postgres (published on port 3200 on macOS) and checks health, the anonymous cookie and one write behind a proxy-style `Host` header.
 
-CI runs lint, typecheck, `npm test`, `npm run build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 16 service.
+CI runs lint, typecheck, `pnpm test`, `pnpm build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 16 service.
 
 ## Deployment
 

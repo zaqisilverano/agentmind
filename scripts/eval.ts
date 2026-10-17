@@ -1,4 +1,4 @@
-// Usage: npm run eval   (reads .env when present; without LLM_API_KEY every call reports "fallback")
+// Usage: pnpm eval   (reads .env when present; without LLM_API_KEY every call reports "fallback")
 import { z } from 'zod';
 import prompts from './eval-prompts.json';
 import { AGENTS } from '@/lib/agents/roster';

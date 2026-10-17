@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Switched from npm to pnpm. The version is pinned in `packageManager` in `package.json`, the lockfile is `pnpm-lock.yaml`, and the Dockerfile and CI install with `pnpm install --frozen-lockfile`.
 - Renamed the project to agentmind (repository `zaqisilverano/agentmind`). The production Compose project is now named `agentmind`, so containers and volumes are prefixed `agentmind`; the proxy override names the app container `agentmind`. Cookie and `localStorage` keys are unchanged. Existing deployments: the old Compose project was named after the `docker/` directory, so the database volume was `docker_ab_pg`; copy it into `agentmind_ab_pg` before the first `up` under the new name, or the app starts on an empty database.
 - First visit starts with an empty map instead of the Tool Library sample.
 

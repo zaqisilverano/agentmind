@@ -92,7 +92,7 @@ describe('toHtml3d', () => {
 });
 
 describe('public/export/layout.js', () => {
-  it('matches a fresh bundle of engine/layout.ts (run npm run build:export-layout after editing the layout)', async () => {
+  it('matches a fresh bundle of engine/layout.ts (run pnpm build:export-layout after editing the layout)', async () => {
     expect(readFileSync('public/export/layout.js', 'utf8')).toBe(await bundleLayout());
   });
   it('exposes the layout API on AtlasLayout', async () => {

@@ -19,7 +19,7 @@ labels: bug
 
 - Browser and version:
 - OS:
-- Run mode (npm run dev / Docker Compose):
+- Run mode (pnpm dev / Docker Compose):
 - LLM provider (model name, or "offline fallback"):
 - Commit or version:
 

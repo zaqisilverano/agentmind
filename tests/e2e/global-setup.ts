@@ -6,5 +6,5 @@ import { E2E_ENV } from './env';
  * a new anonymous user with its own brains, so the suite does not depend on a clean database.
  */
 export default function globalSetup(): void {
-  execFileSync('npx', ['tsx', 'db/migrate.ts'], { env: { ...process.env, ...E2E_ENV }, stdio: 'inherit' });
+  execFileSync('pnpm', ['exec', 'tsx', 'db/migrate.ts'], { env: { ...process.env, ...E2E_ENV }, stdio: 'inherit' });
 }

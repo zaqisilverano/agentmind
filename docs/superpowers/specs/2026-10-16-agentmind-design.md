@@ -20,7 +20,7 @@ The visual design, interaction details and agent behaviour are fixed by the prot
 - Drizzle ORM with `postgres` driver; Postgres 16.
 - Vitest for unit and route tests, `@electric-sql/pglite` for in-process Postgres in tests, Playwright for the smoke test.
 - Docker Compose for production on the OVH VPS; Caddy for HTTPS.
-- Package manager: npm. Node 22 LTS in the Dockerfile.
+- Package manager: pnpm (originally npm; switched on 2026-10-17). Node 22 LTS in the Dockerfile.
 
 ## 3. Project structure
 
@@ -216,14 +216,14 @@ Desktop layout at 768 px and wider, with no panel overlap down to 900×540. Belo
 
 ## 14. Open-source hygiene
 
-MIT `LICENSE`. `README.md`: one-line pitch, screenshot and GIF (placeholder paths until recorded), quick start (`cp .env.example .env`, `docker compose -f docker/compose.dev.yml up -d`, `npm i`, `npm run db:migrate`, `npm run dev`), "run with Ollama" and "run with K2 Horizon" env snippets, architecture section with a text diagram of the request flow, env table, scripts table, project structure, deployment section, contributing pointer, license. `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md` (report to zaqisilverano@gmail.com), `CHANGELOG.md` (Keep a Changelog, Unreleased section), `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md`, `PULL_REQUEST_TEMPLATE.md`, `ci.yml` (lint, typecheck, unit + route tests, gitleaks, build). `CLAUDE.md`: boundary rule, commands, no Co-Authored-By trailer.
+MIT `LICENSE`. `README.md`: one-line pitch, screenshot and GIF (placeholder paths until recorded), quick start (`cp .env.example .env`, `docker compose -f docker/compose.dev.yml up -d`, `pnpm install`, `pnpm db:migrate`, `pnpm dev`), "run with Ollama" and "run with K2 Horizon" env snippets, architecture section with a text diagram of the request flow, env table, scripts table, project structure, deployment section, contributing pointer, license. `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md` (report to zaqisilverano@gmail.com), `CHANGELOG.md` (Keep a Changelog, Unreleased section), `.github/ISSUE_TEMPLATE/bug_report.md`, `feature_request.md`, `PULL_REQUEST_TEMPLATE.md`, `ci.yml` (lint, typecheck, unit + route tests, gitleaks, build). `CLAUDE.md`: boundary rule, commands, no Co-Authored-By trailer.
 
 ## 15. Testing
 
 - Unit (Vitest): `layout.ts` all modes and the depth cone and `heightAt`; `schemas.ts` with valid and invalid samples; `extractJson`; `fallback.ts` output passes schemas; `pickTarget`; `makeKids` id and inheritance rules; `markdown/json/html3d` exporters against a fixture brain; `identity.ts` sign/verify/tamper; `rateLimit`; `themes.ts` and the generated CSS match.
 - Routes (Vitest + pglite, Drizzle migrations applied in `beforeAll`): first visit sets cookie and returns no brains; second visit reuses identity; user A cannot read or mutate user B's brain; create brain assigns numbers 1, 2, 3; delete subtree removes descendants and refuses `n0`; rounds route is atomic (a failing link insert rolls back nodes); LLM routes return fallback with `meta.source = 'fallback'` when no key; rate limiter returns 429.
 - E2E (Playwright, fallback provider, Postgres from compose.dev): load shows the empty state (title "Your second brain", input focused, Run agents disabled); type an idea and press Enter shows new nodes within 5 s; click a node opens the card; Expand adds children; View and Design switches do not throw; Focus and Esc; Markdown download has the title; viewport 900×540 screenshot has no overlapping panels (checked by bounding boxes).
-- `npm run eval`: runs the four prompts against the configured provider over `scripts/eval-prompts.json` and prints pass rate, retries, latency. Not part of CI.
+- `pnpm eval`: runs the four prompts against the configured provider over `scripts/eval-prompts.json` and prints pass rate, retries, latency. Not part of CI.
 
 ## 16. Out of scope for v1
 

@@ -30,7 +30,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- -p ${E2E_PORT}`,
+    command: `pnpm dev -p ${E2E_PORT}`,
     url: `${baseURL}/api/health`,
     reuseExistingServer: false,
     timeout: 120_000,

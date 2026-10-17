@@ -3,7 +3,7 @@
  * Builds the page from the fixture brain with a user note on the core, opens it in Chromium (SwiftShader WebGL) and
  * clicks the core at the canvas centre, a child chip, empty space, and a tap on a touch device.
  * Needs network access to unpkg.com (three) and fonts.googleapis.com.
- * Run: npx tsx scripts/export-check.ts   (once: npx playwright install chromium)
+ * Run: pnpm exec tsx scripts/export-check.ts   (once: pnpm exec playwright install chromium)
  * Screenshot: docs/media/export-3d-card.png (do not commit unless asked); the narrow one goes next to the HTML in the OS temp dir.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
