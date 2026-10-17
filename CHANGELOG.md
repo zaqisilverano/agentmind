@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Mobile layout with bottom sheets: below 768 px a top bar, a phase bar, a tab bar (Map, Agents, Log, Key, Run) and one bottom sheet at a time replace the desktop panels.
+
 ### Changed
 
 - First visit starts with an empty map instead of the Tool Library sample.

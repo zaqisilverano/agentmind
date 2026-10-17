@@ -19,6 +19,8 @@ Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.
 
 **Persistence.** A first visit starts with an empty map: nothing is saved until you map your first idea. Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file.
 
+**On a phone.** Below 768 px wide the panels fold into a top bar, a tab bar (Map, Agents, Log, Key, Run) and bottom sheets; the 3D map stays full screen and responds to touch.
+
 Without an LLM API key the app still works: it falls back to a local keyword parser and template ideas, so you can try everything offline.
 
 Stack: Next.js 15 (App Router), React 19, TypeScript, Tailwind v4, three, Zustand, Zod, Drizzle with Postgres 16, Vitest with pglite, Playwright, Docker Compose with Caddy. Node 22.
