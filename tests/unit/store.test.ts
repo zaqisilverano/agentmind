@@ -357,3 +357,38 @@ describe('selectIsEmpty', () => {
     expect(selectIsEmpty(useStore.getState())).toBe(true);
   });
 });
+
+describe('ui.sheet', () => {
+  it('starts closed', () => {
+    expect(useStore.getState().ui.sheet).toBeNull();
+  });
+
+  it('holds one sheet at a time: opening another replaces it', () => {
+    const { setSheet } = useStore.getState();
+    setSheet('map');
+    expect(useStore.getState().ui.sheet).toBe('map');
+    setSheet('log');
+    expect(useStore.getState().ui.sheet).toBe('log');
+    setSheet('settings');
+    expect(useStore.getState().ui.sheet).toBe('settings');
+  });
+
+  it('closes with null and leaves the rest of ui alone', () => {
+    useStore.getState().setTakeawayOpen(false);
+    useStore.getState().setSheet('key');
+    useStore.getState().setSheet(null);
+    const ui = useStore.getState().ui;
+    expect(ui.sheet).toBeNull();
+    expect(ui.takeawayOpen).toBe(false);
+  });
+
+  it('does not touch the run or the selection', () => {
+    useStore.getState().select('b0');
+    useStore.getState().setRun({ active: true, paused: false });
+    useStore.getState().setSheet('agents');
+    const s = useStore.getState();
+    expect(s.run.active).toBe(true);
+    expect(s.run.paused).toBe(false);
+    expect(s.selected).toBe('b0');
+  });
+});

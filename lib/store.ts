@@ -10,7 +10,9 @@ export interface RunState { active: boolean; paused: boolean; round: number; tot
 export type Busy = 'map' | 'expand' | null;
 /** Loading of the user and brain list: `pending` until `/api/me` answers, then `ready`, or `failed` if it could not be reached. */
 export type Boot = 'pending' | 'ready' | 'failed';
-export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy; boot: Boot }
+/** The bottom sheet open in the mobile layout; one at a time. */
+export type SheetId = 'brain' | 'settings' | 'map' | 'agents' | 'log' | 'key' | 'node';
+export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy; boot: Boot; sheet: SheetId | null }
 export interface Provider { source: 'model' | 'fallback'; model?: string }
 /** A failed save. `message` is the server's error text when it sent one (e.g. "this brain is full (300 nodes)"). */
 export interface SyncError { label: string; message?: string; retry: () => Promise<void> }
@@ -39,6 +41,8 @@ export interface Actions {
   toggleLeft: () => void;
   setFocus: (focus: boolean) => void;
   setOpenDropdown: (id: string | null) => void;
+  /** Opens one mobile sheet (closing any other) or, with null, closes it. */
+  setSheet: (sheet: SheetId | null) => void;
   setTakeawayOpen: (open: boolean) => void;
   setShowPath: (show: boolean) => void;
   setLogOpen: (open: boolean) => void;
@@ -61,7 +65,7 @@ export const initialState: State = {
   theme: 'atlas',
   settings: { rounds: 10 },
   run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '' },
-  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null, boot: 'pending' },
+  ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null, boot: 'pending', sheet: null },
   provider: null,
   syncError: null,
 };
@@ -77,6 +81,7 @@ export const useStore = create<State & Actions>()((set) => ({
   toggleLeft: () => set((s) => ({ ui: { ...s.ui, leftHidden: !s.ui.leftHidden } })),
   setFocus: (focus) => set((s) => ({ ui: { ...s.ui, focus } })),
   setOpenDropdown: (openDropdown) => set((s) => ({ ui: { ...s.ui, openDropdown } })),
+  setSheet: (sheet) => set((s) => ({ ui: { ...s.ui, sheet } })),
   setTakeawayOpen: (takeawayOpen) => set((s) => ({ ui: { ...s.ui, takeawayOpen } })),
   setShowPath: (showPath) => set((s) => ({ ui: { ...s.ui, showPath } })),
   setLogOpen: (logOpen) => set((s) => ({ ui: { ...s.ui, logOpen } })),
