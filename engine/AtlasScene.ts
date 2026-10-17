@@ -29,6 +29,14 @@ const DAMPING = 0.06, MIN_DISTANCE = 5, MAX_DISTANCE = 48, AUTO_ROTATE_SPEED = 0
 const MAX_DT = 100;
 const LAG = 260, FOCUS_RATE = 0.6, CLICK_SLOP = 5; // tick line 739, picking line 535
 const CORE = 'n0', SPAWN_HOLD = 400;
+const MAX_FRAMING = 1.8;
+
+/**
+ * Camera distance multiplier for a viewport: 1 for landscape, up to 1.8 for portrait (1 / aspect), so a tall phone
+ * screen still shows the whole map across its narrow width. Labels keep their pixel sizes.
+ */
+export const framingScale = (aspect: number): number => Math.min(MAX_FRAMING, Math.max(1, 1 / Math.max(aspect, 1e-3)));
+
 const EMPTY_BRAIN: Brain = { id: '', number: 0, title: '', summary: '', round: 0, synth: null, nodes: [], links: [], log: [], createdAt: '', updatedAt: '' };
 
 /**
@@ -56,6 +64,8 @@ export class AtlasScene {
   private down: [number, number] | null = null;
   private width = 1;
   private height = 1;
+  /** The framingScale currently applied to the camera's distance from its target. */
+  private framing = 1;
   private unlisten: (() => void) | null = null;
   private agents: Agents | null = null;
   private names = new Map<string, string>();
@@ -123,6 +133,16 @@ export class AtlasScene {
       this.agents?.setSize(w, h);
       camera.aspect = w / Math.max(1, h);
       camera.updateProjectionMatrix();
+      // Portrait screens: move the camera back along its current line of sight (rescaled on rotation).
+      const k = w > 0 && h > 0 ? framingScale(camera.aspect) : this.framing;
+      if (k !== this.framing) {
+        camera.position.sub(controls.target).multiplyScalar(k / this.framing).add(controls.target);
+        // Fog and the leaf-label fade move back with the camera, so the map reads the same.
+        const fog = scene.fog as THREE.Fog;
+        fog.near = FOG_NEAR * k;
+        fog.far = FOG_FAR * k;
+        this.framing = k;
+      }
     };
     this.ro = new ResizeObserver(size);
     this.ro.observe(el);
@@ -147,7 +167,7 @@ export class AtlasScene {
     t.controls.autoRotate = this.autoRotate && !this.selected && !this.running;
     // Labels project with last frame's camera matrices (one-frame lag; the camera moves slowly).
     this.labels!.update(t.camera, id => nodes.anchorOf(id), this.selected, nodes.related(this.selected),
-      this.width, this.height, nodes.hotIds());
+      this.width, this.height, nodes.hotIds(), this.framing);
     this.agents!.tick(dt, now, t.camera);
     for (const cb of this.subscribers.slice()) cb(dt, now);
     t.controls.update();

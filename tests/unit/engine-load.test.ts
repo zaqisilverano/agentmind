@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { AtlasScene } from '@/engine/AtlasScene';
+import { AtlasScene, framingScale } from '@/engine/AtlasScene';
 import { createGround } from '@/engine/ground';
 import { THEMES } from '@/engine/themes';
 import { GROUND_Y } from '@/engine/layout';
@@ -16,6 +16,14 @@ describe('engine modules load', () => {
     for (const m of ['mount', 'dispose', 'setTheme', 'setMode', 'onFrame', 'setAutoRotate', 'setBrain', 'select', 'setShowPath', 'onPick', 'positionOf', 'targetOf', 'agent', 'setReveal', 'arcPoint'] as const) {
       expect(AtlasScene.prototype[m]).toBeTypeOf('function');
     }
+  });
+
+  it('pulls the camera back on portrait screens only, by at most 1.8', () => {
+    expect(framingScale(1280 / 800)).toBe(1);
+    expect(framingScale(1)).toBe(1);
+    expect(framingScale(0.8)).toBeCloseTo(1.25);
+    expect(framingScale(390 / 844)).toBe(1.8);
+    expect(framingScale(0)).toBe(1.8);
   });
 
   it('exposes createAgents', () => {

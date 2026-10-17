@@ -14,9 +14,10 @@ export interface Labels {
    * `project` returns undefined for a node that is not born yet (its label is hidden).
    * `related` is the selected node's ancestors and descendants (itself included); null when nothing is selected.
    * `hot` holds ids whose label text takes the theme's hot colour (hovered, selected, on the strongest path).
+   * `distScale` is how far the camera was pulled back for a portrait screen; leaf labels fade by distance / distScale.
    */
   update(camera: THREE.Camera, project: (id: string) => LabelAnchor | undefined, selected: string | null,
-    related: Set<string> | null, width: number, height: number, hot?: Set<string>): void;
+    related: Set<string> | null, width: number, height: number, hot?: Set<string>, distScale?: number): void;
   recolor(theme: Theme): void;
   dispose(): void;
 }
@@ -88,7 +89,7 @@ export function createLabels(layer: HTMLElement, theme: Theme): Labels {
     },
 
     // tick, lines 750–764.
-    update(camera, project, selected, related, width, height, hot) {
+    update(camera, project, selected, related, width, height, hot, distScale = 1) {
       const cam = camera.position;
       const anchors = new Map<Label, LabelAnchor>();
       for (const l of order) {
@@ -107,7 +108,7 @@ export function createLabels(layer: HTMLElement, theme: Theme): Labels {
         const dist = cam.distanceTo(v.set(a.x, a.y, a.z));
         const px = a.r * 28 / Math.max(1, dist) * 18 + 8;
         el.style.transform = 'translate(' + (x + px).toFixed(1) + 'px,' + y.toFixed(1) + 'px) translateY(-50%)';
-        let op = n.depth >= 2 ? Math.max(LEAF_MIN_OPACITY, Math.min(1, 1.6 - dist / 30)) : 1;
+        let op = n.depth >= 2 ? Math.max(LEAF_MIN_OPACITY, Math.min(1, 1.6 - dist / distScale / 30)) : 1;
         if (selected && related && !related.has(n.id)) op *= DIM;
         const bw = l.w || (l.w = el.offsetWidth || FALLBACK_W), bh = l.h || (l.h = el.offsetHeight || FALLBACK_H);
         const bx = x + px, by = y - bh / 2;
