@@ -222,7 +222,6 @@ Not in v0.1:
 - Sharing brains by URL
 - Multi-model comparison
 - Streaming partial JSON
-- Mobile layout below 900 px width (the minimum supported viewport is 900×540)
 - Internationalisation
 
 ## Contributing

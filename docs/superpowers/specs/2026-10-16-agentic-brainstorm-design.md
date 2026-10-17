@@ -197,7 +197,7 @@ Layout follows `AGENTS-SPEC.md` §4 exactly: full-screen canvas; double hairline
 
 Settings adds one extra row: "Provider: <model>" or "Provider: offline fallback", from the last LLM response's `meta`.
 
-Minimum supported viewport 900×540, no panel overlap.
+Desktop layout at 768 px and wider, with no panel overlap down to 900×540. Below 768 px the panels fold into a top bar, a tab bar (Map, Agents, Log, Key, Run) and bottom sheets; the map stays full screen and responds to touch.
 
 ## 12. Exports
 
@@ -225,4 +225,4 @@ MIT `LICENSE`. `README.md`: one-line pitch, screenshot and GIF (placeholder path
 
 ## 16. Out of scope for v1
 
-Accounts and email, sharing brains by URL, multi-model comparison, streaming partial JSON, mobile layout below 900 px, i18n.
+Accounts and email, sharing brains by URL, multi-model comparison, streaming partial JSON, i18n.
