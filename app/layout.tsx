@@ -24,10 +24,12 @@ export const metadata: Metadata = {
 };
 
 // viewport-fit=cover lets the mobile bars sit under the home indicator; they pad themselves with env(safe-area-inset-*).
+// resizes-content shrinks the layout viewport for the Android keyboard, so the fixed input bar stays above it.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

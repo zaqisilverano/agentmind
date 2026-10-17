@@ -22,10 +22,26 @@ export interface SheetProps {
 }
 
 /**
+ * After a sheet closes: if focus was inside it (or was dropped to the body when it unmounted), return it to where it
+ * was before the sheet opened; if that element is gone, to the control that opens this sheet (`data-sheet-trigger`);
+ * else let it rest on the body. Focus the user has already moved elsewhere (e.g. another tab) is left alone.
+ */
+function restoreFocus(sheet: HTMLElement | null, before: HTMLElement | null, id: SheetId): void {
+  const active = document.activeElement;
+  const lost = active === null || active === document.body || (sheet?.contains(active) ?? false);
+  if (!lost) return;
+  const trigger = document.querySelector<HTMLElement>(`[data-sheet-trigger="${id}"]`);
+  const target = before?.isConnected && before !== document.body ? before : trigger;
+  if (target) target.focus({ preventScroll: true });
+  else if (active instanceof HTMLElement) active.blur();
+}
+
+/**
  * Mobile bottom sheet: Panel chrome (square corners, 1 px ink border, hard shadow), a header row with the mono title
  * and ×, and a scrolling body up to 70 % of the viewport. It fills the positioned region it is rendered in (between the
  * top bar and the status line in MobileShell) and anchors to its bottom edge. A transparent backdrop over the same
- * region closes it on tap; so does Esc.
+ * region closes it on tap; so does Esc. Non-modal by design: the bars around it stay usable (another tab swaps the
+ * sheet), so there is no aria-modal. It takes focus on open and gives it back on close.
  */
 export function Sheet({ id, title, lead, meta, children, bare = false, 'data-testid': testId }: SheetProps) {
   const open = useStore(s => s.ui.sheet === id);
@@ -35,12 +51,18 @@ export function Sheet({ id, title, lead, meta, children, bare = false, 'data-tes
 
   useEffect(() => {
     if (!open) return;
+    const node = ref.current;
+    // Where focus was before the sheet took it; given back on close.
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.defaultPrevented && useStore.getState().ui.sheet === id) setSheet(null);
     };
     document.addEventListener('keydown', onKey);
-    ref.current?.focus({ preventScroll: true });
-    return () => document.removeEventListener('keydown', onKey);
+    node?.focus({ preventScroll: true });
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      restoreFocus(node, before, id);
+    };
   }, [open, id, setSheet]);
 
   if (!open) return null;
@@ -51,7 +73,6 @@ export function Sheet({ id, title, lead, meta, children, bare = false, 'data-tes
       <div
         ref={ref}
         role="dialog"
-        aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
         data-testid={testId}
@@ -66,7 +87,7 @@ export function Sheet({ id, title, lead, meta, children, bare = false, 'data-tes
             title="Close"
             aria-label="Close"
             onClick={() => setSheet(null)}
-            className="-my-2 -mr-1.5 flex-none cursor-pointer border-none bg-transparent px-1.5 py-1 font-mono text-[16px] leading-[normal] text-ink"
+            className="-my-[14px] -mr-[13px] flex h-10 w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent font-mono text-[16px] leading-[normal] text-ink"
           >
             ×
           </button>

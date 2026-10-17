@@ -27,6 +27,7 @@ function TopBar() {
         type="button"
         aria-haspopup="dialog"
         aria-expanded={sheet === 'brain'}
+        data-sheet-trigger="brain"
         onClick={() => toggle('brain')}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 border border-ink bg-panel px-3 pt-[7px] pb-[6px] text-left text-ink shadow-[var(--shadow3)]"
       >
@@ -44,6 +45,7 @@ function TopBar() {
         aria-label="View & settings"
         aria-haspopup="dialog"
         aria-expanded={sheet === 'settings'}
+        data-sheet-trigger="settings"
         onClick={() => toggle('settings')}
         className={`${SQUARE} text-[15px] tracking-[0.05em] ${sheet === 'settings' ? 'bg-ink text-panel' : 'bg-panel text-ink'}`}
       >
@@ -104,6 +106,7 @@ function TabBar() {
           key={id}
           type="button"
           aria-pressed={sheet === id}
+          data-sheet-trigger={id}
           onClick={() => setSheet(sheet === id ? null : id)}
           className={`flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-[5px] border-r border-ink py-[9px] font-mono uppercase leading-none ${sheet === id ? 'bg-ink text-panel' : 'bg-panel text-ink'}`}
         >

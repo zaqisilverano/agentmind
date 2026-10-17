@@ -124,8 +124,11 @@ test.describe.serial('Agentic Brainstorm on a phone', () => {
 
     await tab('Log').click();
     await expect(sheet('Agent log').getByText(/^Press Run agents\./)).toBeVisible();
+    await expect(sheet('Agent log')).toBeFocused(); // the sheet takes focus; it is non-modal
+    await expect(sheet('Agent log')).not.toHaveAttribute('aria-modal', /.*/);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(tab('Log')).toBeFocused(); // and gives it back on close
 
     await tab('Key').click();
     await expect(sheet('Key takeaway').getByText('Run the agents to get a key takeaway.')).toBeVisible();

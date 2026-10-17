@@ -30,10 +30,3 @@ const getServerSnapshot = (): boolean => false;
 export function useIsMobile(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
-
-const noop = () => () => {};
-
-/** False on the server and during hydration, true from the first client render after it. */
-export function useMounted(): boolean {
-  return useSyncExternalStore(noop, () => true, () => false);
-}

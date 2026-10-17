@@ -141,6 +141,7 @@ export class AtlasScene {
         const fog = scene.fog as THREE.Fog;
         fog.near = FOG_NEAR * k;
         fog.far = FOG_FAR * k;
+        controls.maxDistance = MAX_DISTANCE * k; // keep the same zoom-out headroom
         this.framing = k;
       }
     };
