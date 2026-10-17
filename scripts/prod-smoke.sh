@@ -72,8 +72,8 @@ step "GET /api/me mints an anonymous user"
 curl -fsS -D "$tmp/me.headers" -o "$tmp/me.json" "$base/api/me"
 cookie=$(grep -i '^set-cookie: ab_uid=' "$tmp/me.headers" | sed 's/^[^:]*: //; s/;.*//' | tr -d '\r')
 [ -n "$cookie" ] || { echo "prod-smoke: no ab_uid cookie"; exit 1; }
-grep -q '"brains":\[{' "$tmp/me.json" || { echo "prod-smoke: no sample brain"; cat "$tmp/me.json"; exit 1; }
-echo "ok: cookie set, sample brain listed"
+grep -q '"brains":\[' "$tmp/me.json" || { echo "prod-smoke: no brains list"; cat "$tmp/me.json"; exit 1; }
+echo "ok: cookie set, brains listed (empty on a first visit)"
 
 step "POST /api/llm/map behind a proxy Host answers from the fallback"
 code=$(curl -sS -o "$tmp/map.json" -D "$tmp/map.headers" -w '%{http_code}' -X POST \
