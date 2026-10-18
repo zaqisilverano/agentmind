@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { loadAnalytics as loadA, loadEnv as load } from '@/lib/env';
+import { loadEnv as load } from '@/lib/env';
 
 const base = { DATABASE_URL: 'postgres://x', COOKIE_SECRET: 'a'.repeat(32), LLM_BASE_URL: 'https://api.ifm.ai/v1', LLM_MODEL: 'm' };
 
 // NODE_ENV is typed as required on ProcessEnv by Next's types; tests omit it on purpose.
 const loadEnv = (raw: Record<string, string>) => load(raw as NodeJS.ProcessEnv);
-const loadAnalytics = (raw: Record<string, string>) => loadA(raw as NodeJS.ProcessEnv);
 
 describe('env', () => {
   it('defaults', () => {
@@ -33,41 +32,6 @@ describe('env', () => {
     expect(() => loadEnv({ ...base, NODE_ENV: 'production', COOKIE_SECRET: 'change-me-change-me-change-me-change-me' })).toThrow(/example/));
   it('allows the example secret outside production', () =>
     expect(loadEnv({ ...base, NODE_ENV: 'development', COOKIE_SECRET: 'change-me-change-me-change-me-change-me' }).COOKIE_SECRET).toHaveLength(39));
-});
-
-describe('analytics env', () => {
-  const ID = '4f8e2a6c-1b3d-4e5f-9a7b-2c4d6e8f0a1b';
-  const URL_ = 'https://stats.example.test/script.js';
-
-  it('is off by default and when both are empty', () => {
-    expect(loadAnalytics({})).toBeNull();
-    expect(loadAnalytics({ UMAMI_SCRIPT_URL: '', UMAMI_WEBSITE_ID: '' })).toBeNull();
-    const e = loadEnv({ ...base, UMAMI_SCRIPT_URL: '', UMAMI_WEBSITE_ID: '' });
-    expect(e.UMAMI_SCRIPT_URL).toBeUndefined();
-    expect(e.UMAMI_WEBSITE_ID).toBeUndefined();
-  });
-  it('returns the script, its origin and the website id when both are set', () => {
-    expect(loadAnalytics({ UMAMI_SCRIPT_URL: URL_, UMAMI_WEBSITE_ID: ID })).toEqual({ scriptUrl: URL_, origin: 'https://stats.example.test', websiteId: ID });
-  });
-  it('adds DOMAIN as the tracked host only when it is a plain host name', () => {
-    expect(loadAnalytics({ UMAMI_SCRIPT_URL: URL_, UMAMI_WEBSITE_ID: ID, DOMAIN: 'agentmind.zaqi.build' })?.domain).toBe('agentmind.zaqi.build');
-    expect(loadAnalytics({ UMAMI_SCRIPT_URL: URL_, UMAMI_WEBSITE_ID: ID, DOMAIN: 'a.example, b.example' })?.domain).toBeUndefined();
-  });
-  it('requires both or neither', () => {
-    expect(() => loadAnalytics({ UMAMI_SCRIPT_URL: URL_ })).toThrow(/UMAMI_WEBSITE_ID/);
-    expect(() => loadAnalytics({ UMAMI_WEBSITE_ID: ID })).toThrow(/UMAMI_SCRIPT_URL/);
-    expect(() => loadEnv({ ...base, UMAMI_WEBSITE_ID: ID })).toThrow(/UMAMI_SCRIPT_URL/);
-  });
-  it('rejects a website id that is not a UUID', () => expect(() => loadAnalytics({ UMAMI_SCRIPT_URL: URL_, UMAMI_WEBSITE_ID: 'abc' })).toThrow(/UMAMI_WEBSITE_ID/));
-  it('rejects a script URL that is not http(s)', () => {
-    expect(() => loadAnalytics({ UMAMI_SCRIPT_URL: 'not a url', UMAMI_WEBSITE_ID: ID })).toThrow(/UMAMI_SCRIPT_URL/);
-    expect(() => loadAnalytics({ UMAMI_SCRIPT_URL: 'javascript:alert(1)', UMAMI_WEBSITE_ID: ID })).toThrow(/UMAMI_SCRIPT_URL/);
-  });
-  it('requires https in production, allows http outside it', () => {
-    const http = { UMAMI_SCRIPT_URL: 'http://localhost:3001/script.js', UMAMI_WEBSITE_ID: ID };
-    expect(() => loadAnalytics({ ...http, NODE_ENV: 'production' })).toThrow(/https/);
-    expect(() => loadEnv({ ...base, ...http, NODE_ENV: 'production' })).toThrow(/https/);
-    expect(loadAnalytics({ ...http, NODE_ENV: 'development' })?.origin).toBe('http://localhost:3001');
-    expect(loadAnalytics({ UMAMI_SCRIPT_URL: URL_, UMAMI_WEBSITE_ID: ID, NODE_ENV: 'production' })).not.toBeNull();
-  });
+  it('ignores the UMAMI_* settings: invalid analytics never breaks the app env', () =>
+    expect(loadEnv({ ...base, NODE_ENV: 'production', COOKIE_SECRET: 'b'.repeat(32), UMAMI_SCRIPT_URL: 'not a url', UMAMI_WEBSITE_ID: 'nope', UMAMI_DOMAINS: '!!' }).DATABASE_URL).toBe('postgres://x'));
 });

@@ -122,5 +122,22 @@ describe('CSP with optional Umami analytics', () => {
       expect(policy).toBe(BEFORE.prodPage.replace("connect-src 'self'", "connect-src 'self' https://stats.example.test"));
       expect(directive(policy, 'script-src')).toBe("script-src 'self' 'nonce-NONCE' 'strict-dynamic'");
     });
+
+    it.each([
+      ['an invalid URL', { UMAMI_SCRIPT_URL: 'not a url', UMAMI_WEBSITE_ID: '4f8e2a6c-1b3d-4e5f-9a7b-2c4d6e8f0a1b' }],
+      ['a website id that is not a UUID', { UMAMI_SCRIPT_URL: 'https://stats.example.test/script.js', UMAMI_WEBSITE_ID: 'nope' }],
+      ['only one of the two set', { UMAMI_SCRIPT_URL: 'https://stats.example.test/script.js', UMAMI_WEBSITE_ID: '' }],
+      ['an invalid UMAMI_DOMAINS', { UMAMI_SCRIPT_URL: 'https://stats.example.test/script.js', UMAMI_WEBSITE_ID: '4f8e2a6c-1b3d-4e5f-9a7b-2c4d6e8f0a1b', UMAMI_DOMAINS: 'bad host' }],
+    ])('misconfigured (%s): the page still passes through with the CSP unchanged', async (_name, env) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vi.stubEnv('NODE_ENV', 'production');
+      for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
+      vi.resetModules();
+      const { proxy } = await import('@/proxy');
+      const res = proxy(new NextRequest('http://localhost/'));
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Content-Security-Policy')!.replace(/'nonce-[^']+'/, "'nonce-NONCE'")).toBe(BEFORE.prodPage);
+      vi.restoreAllMocks();
+    });
   });
 });

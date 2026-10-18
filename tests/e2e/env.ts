@@ -13,6 +13,7 @@ export const E2E_ENV: Record<string, string> = {
   RATE_LIMIT_PER_HOUR: '1000',
   UMAMI_SCRIPT_URL: '',
   UMAMI_WEBSITE_ID: '',
+  UMAMI_DOMAINS: '',
   NODE_ENV: 'development',
 };
 

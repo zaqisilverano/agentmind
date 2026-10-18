@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { getAnalytics } from '@/lib/env';
+import { getAnalytics } from '@/lib/analyticsConfig';
 import './globals.css';
 
 const serif = Instrument_Serif({
@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  // Optional self-hosted Umami (lib/env.ts). Off by default: no script, and proxy.ts leaves the CSP as it is.
+  // Optional self-hosted Umami (lib/analyticsConfig.ts). Off by default: no script, and proxy.ts leaves the CSP as it is.
   // The tag carries the request nonce from proxy.ts, the same one Next stamps on its own inline scripts.
   const analytics = getAnalytics();
   const nonce = analytics ? ((await headers()).get('x-nonce') ?? undefined) : undefined;
@@ -47,7 +47,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             defer
             src={analytics.scriptUrl}
             data-website-id={analytics.websiteId}
-            data-domains={analytics.domain}
+            data-domains={analytics.domains}
             data-do-not-track="true"
             nonce={nonce}
           />

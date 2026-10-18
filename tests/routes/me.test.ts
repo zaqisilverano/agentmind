@@ -154,3 +154,24 @@ describe('GET /api/me provider', () => {
   });
 });
 
+describe('a misconfigured Umami never breaks the API', () => {
+  it.each([
+    ['an invalid URL', { UMAMI_SCRIPT_URL: 'not a url', UMAMI_WEBSITE_ID: '4f8e2a6c-1b3d-4e5f-9a7b-2c4d6e8f0a1b' }],
+    ['a website id that is not a UUID', { UMAMI_SCRIPT_URL: 'https://stats.example.test/script.js', UMAMI_WEBSITE_ID: 'nope' }],
+    ['only one of the two set', { UMAMI_SCRIPT_URL: 'https://stats.example.test/script.js' }],
+  ])('%s: /api/me and /api/health answer 200', async (_name, env) => {
+    const saved = { ...process.env };
+    Object.assign(process.env, env, { NODE_ENV: 'production' });
+    vi.resetModules();
+    try {
+      await (await import('./_harness')).makeTestDb();
+      const { GET: me } = await import('@/app/api/me/route');
+      const { GET: health } = await import('@/app/api/health/route');
+      expect((await me(new Request('http://t/api/me'))).status).toBe(200);
+      expect((await health()).status).toBe(200);
+    } finally {
+      process.env = saved;
+      vi.resetModules();
+    }
+  });
+});

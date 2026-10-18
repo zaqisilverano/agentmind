@@ -284,11 +284,25 @@ describe('analytics events', () => {
     expect(sent()).not.toContain('b2');
   });
 
-  it('a refused run sends nothing', () => {
+  it('a whitespace-only focus counts as no focus', async () => {
+    c.startRun({ scope: 'b2', focus: '   ' });
+    await idle();
+    expect(umami.track.mock.calls).toEqual([['expand', { rounds: 5, focus: 'no' }]]);
+  });
+
+  it('a run startRun refuses sends nothing', async () => {
     useStore.getState().setRun({ active: true });
     expandWithAgents('b2');
+    useStore.getState().setRun({ active: false });
     c.startRun({ scope: 'nope' });
-    expect(umami.track).not.toHaveBeenCalled();
+    c.startRun({ brainId: 'someone-else' });
+    c.startRun();
+    c.startRun(); // the runner is still going: refused
+    await idle();
+    expect(umami.track.mock.calls).toEqual([['run', { rounds: 5 }]]);
+    useStore.setState({ brain: null });
+    c.startRun();
+    expect(umami.track).toHaveBeenCalledTimes(1);
   });
 });
 

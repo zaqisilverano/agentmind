@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getAnalytics } from '@/lib/env';
+import { getAnalytics } from '@/lib/analyticsConfig';
 import { csp } from '@/lib/securityHeaders';
 
 /**

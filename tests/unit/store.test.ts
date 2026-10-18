@@ -402,6 +402,13 @@ describe('provider and lastSource', () => {
     expect([useStore.getState().provider, useStore.getState().lastSource]).toEqual([K2, 'model']);
   });
 
+  it('Restore ID (switchUser) clears lastSource and takes the new provider', async () => {
+    useStore.getState().hydrate({ user: { id: 'u' }, brains: [], provider: K2 });
+    useStore.getState().setLastSource('fallback');
+    await sync.switchUser({ user: { id: 'u2' }, brains: [], provider: OFFLINE });
+    expect([useStore.getState().provider, useStore.getState().lastSource]).toEqual([OFFLINE, null]);
+  });
+
   it('providerStatus: green when configured, amber with a note after a fallback, grey without a key', () => {
     expect(providerStatus(null, null)).toEqual({ tone: 'unknown', label: '—' });
     expect(providerStatus(K2, null)).toEqual({ tone: 'ok', label: 'K2 Horizon 375B' });

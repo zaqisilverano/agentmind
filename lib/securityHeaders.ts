@@ -18,7 +18,7 @@ export interface HeaderEntry {
  * securityHeaders(env) with no nonce is the strict static policy, used for API routes (JSON,
  * no scripts) via next.config.ts.
  *
- * When the optional Umami analytics is configured (lib/env.ts), the page policy also allows `connect-src` to the
+ * When the optional Umami analytics is configured (lib/analyticsConfig.ts), the page policy also allows `connect-src` to the
  * tracker's origin, where it posts events (`<origin>/api/send`). The tracker script itself needs no script-src entry:
  * the layout stamps it with the request nonce, and 'strict-dynamic' trusts nonced scripts.
  *

@@ -71,11 +71,12 @@ export async function selectBrain(id: string): Promise<void> {
 
 /**
  * Drops everything that belongs to the current identity: invalidates any in-flight `selectBrain`/`createBrain`,
- * stops the run, closes the brain and clears the list and any pending sync error. The user row is left alone.
+ * stops the run, closes the brain and clears the list, any pending sync error and which LLM side answered last. The user
+ * row is left alone.
  */
 export function resetSession(): void {
   ++selectToken;
-  useStore.setState({ run: { ...initialState.run, paused: true }, brain: null, selected: null, syncError: null, brains: [] });
+  useStore.setState({ run: { ...initialState.run, paused: true }, brain: null, selected: null, syncError: null, brains: [], lastSource: null });
 }
 
 /** After the cookie changed hands (Restore ID): reset, adopt the new user and list, then open their first brain. */
