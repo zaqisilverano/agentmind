@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 import { csp, securityHeaders } from '@/lib/securityHeaders';
 
 const get = (env: 'production' | 'development', key: string) =>
@@ -65,5 +66,61 @@ describe('CSP sources', () => {
     const api = pathToRegexp(cspSources[0], [], {});
     for (const p of ['/', '/apiary', '/api', '/dev/engine']) expect([proxy.test(p), api.test(p)], p).toEqual([true, false]);
     for (const p of ['/api/me', '/api/brains/x', '/api/llm/map', '/api/health']) expect([proxy.test(p), api.test(p)], p).toEqual([false, true]);
+  });
+});
+
+// The policies as they were before the optional Umami analytics, byte for byte.
+const BEFORE = {
+  prodPage: "default-src 'self'; script-src 'self' 'nonce-NONCE' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  devPage: "default-src 'self'; script-src 'self' 'unsafe-eval' 'nonce-NONCE' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  api: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+};
+const directive = (policy: string, name: string) => policy.split('; ').find((d) => d.startsWith(`${name} `));
+
+describe('CSP with optional Umami analytics', () => {
+  it('without an analytics origin the policies are unchanged', () => {
+    expect(csp('production', 'NONCE')).toBe(BEFORE.prodPage);
+    expect(csp('production', 'NONCE', undefined)).toBe(BEFORE.prodPage);
+    expect(csp('development', 'NONCE')).toBe(BEFORE.devPage);
+    expect(get('production', 'Content-Security-Policy')).toBe(BEFORE.api);
+  });
+
+  it('with an analytics origin, connect-src adds exactly that origin and nothing else changes', () => {
+    const p = csp('production', 'NONCE', 'https://stats.example.test');
+    expect(directive(p, 'connect-src')).toBe("connect-src 'self' https://stats.example.test");
+    expect(p).toBe(BEFORE.prodPage.replace("connect-src 'self'", "connect-src 'self' https://stats.example.test"));
+    expect(directive(p, 'script-src')).toBe("script-src 'self' 'nonce-NONCE' 'strict-dynamic'");
+    expect(directive(csp('development', 'NONCE', 'https://stats.example.test'), 'connect-src')).toBe("connect-src 'self' ws: wss: https://stats.example.test");
+  });
+
+  describe('proxy', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+    const pagePolicy = async () => {
+      vi.resetModules();
+      const { proxy } = await import('@/proxy');
+      const res = proxy(new NextRequest('http://localhost/'));
+      const policy = res.headers.get('Content-Security-Policy')!;
+      return policy.replace(/'nonce-[^']+'/, "'nonce-NONCE'");
+    };
+
+    it('leaves the page CSP as it was when Umami is not configured', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('UMAMI_SCRIPT_URL', '');
+      vi.stubEnv('UMAMI_WEBSITE_ID', '');
+      expect(await pagePolicy()).toBe(BEFORE.prodPage);
+    });
+
+    it('adds only the script origin to connect-src when Umami is configured', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('UMAMI_SCRIPT_URL', 'https://stats.example.test/script.js');
+      vi.stubEnv('UMAMI_WEBSITE_ID', '4f8e2a6c-1b3d-4e5f-9a7b-2c4d6e8f0a1b');
+      const policy = await pagePolicy();
+      expect(directive(policy, 'connect-src')).toBe("connect-src 'self' https://stats.example.test");
+      expect(policy).toBe(BEFORE.prodPage.replace("connect-src 'self'", "connect-src 'self' https://stats.example.test"));
+      expect(directive(policy, 'script-src')).toBe("script-src 'self' 'nonce-NONCE' 'strict-dynamic'");
+    });
   });
 });

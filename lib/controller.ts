@@ -1,6 +1,7 @@
 import type { AtlasScene } from '@/engine/AtlasScene';
 import { THEMES } from '@/engine/themes';
 import { AgentRunner, type RunOptions, type RunnerDeps } from '@/lib/agents/runner';
+import { track } from '@/lib/analytics';
 import { apiClient, type ApiClient } from '@/lib/apiClient';
 import { useStore } from '@/lib/store';
 import { applyRound, setTakeaway } from '@/lib/sync';
@@ -124,6 +125,9 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
       s.select(null);
       s.setRun({ active: true, paused: false, round: brain.round, total: brain.round + rounds, phase: null, agent: null, status: '', scope });
       void r.start(brain.id, rounds, scope === null ? {} : { scope, focus: opts.focus }).finally(() => store().setRun({ active: false, phase: null, agent: null, scope: null }));
+      // Counts and yes/no only: the focus text never leaves the app.
+      if (scope === null) track('run', { rounds });
+      else track('expand', { rounds, focus: opts.focus ? 'yes' : 'no' });
     },
     pause() {
       if (runner?.running) store().setStatus('Pausing after this round…');

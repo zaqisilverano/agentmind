@@ -1,5 +1,6 @@
 import { THEMES } from '@/engine/themes';
 import type { IdeaNode } from '@/engine/types';
+import { track } from '@/lib/analytics';
 import type { LlmMeta } from '@/lib/apiClient';
 import { controllerApi, getController } from '@/lib/controller';
 import { fromBranches } from '@/lib/ids';
@@ -56,6 +57,7 @@ export async function mapIdea(text: string): Promise<Mapped | null> {
       store().setStatus('The new brain was not saved');
       return null;
     }
+    track('map', { source: meta.source, nodes: nodes.length });
     const opened = store().brain?.id === brain.id;
     store().setStatus(opened ? `${nodes.length} nodes · ${providerText(meta)}` : `Mapped “${brain.title}”. Open it and press Run agents.`);
     return { id: brain.id, title: brain.title, opened };

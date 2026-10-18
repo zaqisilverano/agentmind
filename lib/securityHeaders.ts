@@ -18,11 +18,16 @@ export interface HeaderEntry {
  * securityHeaders(env) with no nonce is the strict static policy, used for API routes (JSON,
  * no scripts) via next.config.ts.
  *
+ * When the optional Umami analytics is configured (lib/env.ts), the page policy also allows `connect-src` to the
+ * tracker's origin, where it posts events (`<origin>/api/send`). The tracker script itself needs no script-src entry:
+ * the layout stamps it with the request nonce, and 'strict-dynamic' trusts nonced scripts.
+ *
  * Development relaxes the policy: Next dev/HMR needs 'unsafe-eval' and inline scripts,
  * and a websocket connection for hot reload. Never ship the development policy.
  */
-export function csp(env: SecurityEnv, nonce?: string): string {
+export function csp(env: SecurityEnv, nonce?: string, analyticsOrigin?: string): string {
   const dev = env === 'development';
+  const connect = ["'self'", ...(dev ? ['ws:', 'wss:'] : []), ...(analyticsOrigin ? [analyticsOrigin] : [])].join(' ');
   const script = ["'self'", ...(dev ? ["'unsafe-eval'"] : []), ...(nonce ? [`'nonce-${nonce}'`, "'strict-dynamic'"] : dev ? ["'unsafe-inline'"] : [])].join(' ');
   return [
     "default-src 'self'",
@@ -30,7 +35,7 @@ export function csp(env: SecurityEnv, nonce?: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'",
+    `connect-src ${connect}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",

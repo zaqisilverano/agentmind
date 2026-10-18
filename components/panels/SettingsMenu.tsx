@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { track } from '@/lib/analytics';
 import { download, slugify } from '@/lib/download';
 import { toJson } from '@/lib/export/json';
 import { downloadHtml3d } from '@/lib/export/html3dClient';
@@ -19,20 +20,22 @@ const Heading = ({ children }: { children: ReactNode }) => (
 export function useDownloads() {
   const hasBrain = useStore(s => s.brain !== null);
 
-  const save = (ext: string, mime: string, render: typeof toMarkdown) => {
+  const save = (format: 'markdown' | 'json', ext: string, mime: string, render: typeof toMarkdown) => {
     const brain = useStore.getState().brain;
-    if (brain) download(`${slugify(brain.title)}.${ext}`, render(brain), mime);
+    if (!brain) return;
+    download(`${slugify(brain.title)}.${ext}`, render(brain), mime);
+    track('download', { format });
   };
 
   const saveHtml3d = () => {
     const { brain, theme, mode, setStatus } = useStore.getState();
-    if (brain) downloadHtml3d(brain, theme, mode).catch(() => setStatus('Could not build the 3D HTML export. Try again.'));
+    if (brain) downloadHtml3d(brain, theme, mode).then(() => track('download', { format: 'html3d' }), () => setStatus('Could not build the 3D HTML export. Try again.'));
   };
 
   return {
     hasBrain,
-    saveMarkdown: () => save('md', 'text/markdown', toMarkdown),
-    saveJson: () => save('json', 'application/json', toJson),
+    saveMarkdown: () => save('markdown', 'md', 'text/markdown', toMarkdown),
+    saveJson: () => save('json', 'json', 'application/json', toJson),
     saveHtml3d,
   };
 }

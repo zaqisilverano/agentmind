@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Instrument_Serif, JetBrains_Mono } from 'next/font/google';
+import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { getAnalytics } from '@/lib/env';
 import './globals.css';
 
 const serif = Instrument_Serif({
@@ -32,9 +34,25 @@ export const viewport: Viewport = {
   interactiveWidget: 'resizes-content',
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Optional self-hosted Umami (lib/env.ts). Off by default: no script, and proxy.ts leaves the CSP as it is.
+  // The tag carries the request nonce from proxy.ts, the same one Next stamps on its own inline scripts.
+  const analytics = getAnalytics();
+  const nonce = analytics ? ((await headers()).get('x-nonce') ?? undefined) : undefined;
   return (
     <html lang="en" data-theme="atlas" className={`${serif.variable} ${mono.variable}`}>
+      {analytics && (
+        <head>
+          <script
+            defer
+            src={analytics.scriptUrl}
+            data-website-id={analytics.websiteId}
+            data-domains={analytics.domain}
+            data-do-not-track="true"
+            nonce={nonce}
+          />
+        </head>
+      )}
       <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>

@@ -6,6 +6,7 @@ import { configureController, createController, setController, type ControllerAp
 import { mapIdea, pathNames } from '@/lib/grow';
 import { expandWithAgents, runAction, startFromInput } from '@/lib/run';
 import { fallback } from '@/lib/llm/fallback';
+import { fromBranches } from '@/lib/ids';
 import { initialState, useStore } from '@/lib/store';
 import { configureSync, selectBrain } from '@/lib/sync';
 import { fixtureBrain } from '../fixtures/brain';
@@ -221,6 +222,64 @@ describe('startFromInput', () => {
   it('a scope node that is not in the brain starts nothing', () => {
     c.startRun({ scope: 'nope' });
     expect(useStore.getState().run.active).toBe(false);
+  });
+});
+
+describe('analytics events', () => {
+  const idle = () => vi.waitFor(() => expect(useStore.getState().run.active).toBe(false), { timeout: 5000 });
+  const umami = { track: vi.fn() };
+  let c: ReturnType<typeof createController>;
+  beforeEach(() => {
+    vi.stubGlobal('window', { umami });
+    c = createController(() => null, { sleep: async () => {} });
+    setController(c);
+    useStore.setState({ settings: { rounds: 5 } });
+    return () => {
+      c.dispose();
+      setController(null);
+      vi.unstubAllGlobals();
+    };
+  });
+  /** Every value sent, as one string, to check that no user text leaked into a payload. */
+  const sent = () => JSON.stringify(umami.track.mock.calls);
+
+  it('typed text: "map" with the source and node count, then "run" with the rounds; no idea text', async () => {
+    expect(await startFromInput('a tool library for renters')).toBe(true);
+    await idle();
+    const nodes = fromBranches(fallback.map('a tool library for renters'), '#000').nodes.length;
+    expect(nodes).toBeGreaterThan(0);
+    expect(umami.track.mock.calls).toEqual([
+      ['map', { source: 'fallback', nodes }],
+      ['run', { rounds: 5 }],
+    ]);
+    expect(sent()).not.toMatch(/tool library|renters/i);
+  });
+
+  it('a failed map sends nothing', async () => {
+    vi.mocked(llm.llm.map).mockRejectedValueOnce(new Error('upstream down'));
+    expect(await startFromInput('a tool library for renters')).toBe(false);
+    expect(umami.track).not.toHaveBeenCalled();
+  });
+
+  it('a scoped run: "expand" with focus yes/no, never the focus text or the node', async () => {
+    useStore.getState().select('b2');
+    expect(await startFromInput(' who pays? ')).toBe(true);
+    await idle();
+    expandWithAgents('b2');
+    await idle();
+    expect(umami.track.mock.calls).toEqual([
+      ['expand', { rounds: 5, focus: 'yes' }],
+      ['expand', { rounds: 5, focus: 'no' }],
+    ]);
+    expect(sent()).not.toContain('who pays');
+    expect(sent()).not.toContain('b2');
+  });
+
+  it('a refused run sends nothing', () => {
+    useStore.getState().setRun({ active: true });
+    expandWithAgents('b2');
+    c.startRun({ scope: 'nope' });
+    expect(umami.track).not.toHaveBeenCalled();
   });
 });
 
