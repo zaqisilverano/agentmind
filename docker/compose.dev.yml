@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: atlas
       POSTGRES_PASSWORD: atlas
@@ -8,7 +8,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ab_dev_pg:/var/lib/postgresql/data
+      # Postgres 18 layout: the volume is mounted one level up and PGDATA is 18/docker below it.
+      - ab_dev_pg18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U atlas"]
       interval: 5s
@@ -16,4 +17,4 @@ services:
       retries: 10
 
 volumes:
-  ab_dev_pg:
+  ab_dev_pg18:

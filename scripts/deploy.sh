@@ -16,8 +16,6 @@ main() {
   git reset -q --hard "$ref"
   echo "deploy: at $(git log -1 --format='%h %s')"
 
-  # The server's snap Docker cannot do BuildKit registry lookups; the base images are preloaded, so use the classic builder.
-  export DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0
   docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --build </dev/null
 
   echo "deploy: waiting up to 90 s for agentmind to be healthy"

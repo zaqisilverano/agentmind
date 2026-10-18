@@ -4,7 +4,9 @@
 # Needs a .env at the repo root (copy .env.example). Under compose, DATABASE_URL must be
 #   postgres://atlas:atlas@db:5432/atlas
 # and COOKIE_SECRET must be changed from the example value.
-# Project name: containers and volumes are prefixed agentmind- (volumes agentmind_ab_pg and so on).
+# Project name: containers and volumes are prefixed agentmind- (volumes agentmind_ab_pg18 and so on).
+# Postgres 18 keeps its data in ab_pg18 (mounted at /var/lib/postgresql; the image puts PGDATA in 18/docker below it).
+# The Postgres 16 volume ab_pg is no longer used and is left in place as a rollback.
 name: agentmind
 
 services:
@@ -21,13 +23,13 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-atlas}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atlas}
       POSTGRES_DB: ${POSTGRES_DB:-atlas}
     volumes:
-      - ab_pg:/var/lib/postgresql/data
+      - ab_pg18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -36,7 +38,7 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2
+    image: caddy:2.11
     ports:
       - "80:80"
       - "443:443"
@@ -51,6 +53,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  ab_pg:
+  ab_pg18:
   ab_caddy_data:
   ab_caddy_config:

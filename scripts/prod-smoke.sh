@@ -3,7 +3,7 @@
 # and one write through the same-origin check with a proxy-style Host header (the standalone server binds 0.0.0.0).
 #
 # Needs a migrated-or-empty Postgres with user, password and database "atlas" (the container migrates on start):
-#   CI (Linux):  a postgres:16 service on 127.0.0.1:5432; the container uses --network host and port 3000.
+#   CI (Linux):  a postgres:18 service on 127.0.0.1:5432; the container uses --network host and port 3000.
 #   macOS:       docker compose -f docker/compose.dev.yml up -d; the container publishes 3200 and reaches the
 #                database through host.docker.internal.
 # Overrides: SMOKE_IMAGE (default agentmind:ci), SMOKE_SKIP_BUILD=1, SMOKE_PORT, SMOKE_DATABASE_URL.
