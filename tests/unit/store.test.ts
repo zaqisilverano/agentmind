@@ -13,7 +13,7 @@ function fakeApi(returns: Brain): Fake {
     me: vi.fn(), restore: vi.fn(), health: vi.fn(), listBrains: vi.fn(),
     createBrain: ok(), getBrain: ok(), patchBrain: ok(), deleteBrain: vi.fn().mockResolvedValue({ ok: true }),
     addNodes: ok(), patchNode: ok(), deleteNode: ok(), addLinks: ok(), applyRound: ok(), setTakeaway: ok(),
-    llm: { map: vi.fn(), expand: vi.fn(), agentRound: vi.fn(), takeaway: vi.fn() },
+    llm: { map: vi.fn(), agentRound: vi.fn(), takeaway: vi.fn() },
   } as unknown as Fake;
 }
 

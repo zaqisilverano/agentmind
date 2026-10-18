@@ -19,7 +19,7 @@ export function AgentLogEntries() {
       {entries.length === 0 && (
         <div className="p-4 font-serif text-[17px] leading-[1.35] text-pretty text-soft">
           {empty
-            ? 'Map an idea first. Then press Run agents and five agents take turns growing it.'
+            ? 'Type an idea and press Run agents: the idea is mapped, then five agents take turns growing it.'
             : 'Press Run agents. Five agents take turns: each round one picks a thin part of the map, adds ideas, and looks for links to other branches. The Strategist closes with a key takeaway.'}
         </div>
       )}
@@ -29,6 +29,7 @@ export function AgentLogEntries() {
           <button
             key={`${e.seq}-${e.node}-${e.tag}`}
             type="button"
+            data-node={e.node}
             onClick={() => select(e.node)}
             className="flex flex-none cursor-pointer gap-[10px] border-b border-rule2 px-[14px] py-[10px] text-left text-ink hover:bg-bg"
           >

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { selectIsEmpty, useStore, type SheetId } from '@/lib/store';
 import { pad3 } from '@/components/panels/BrainDropdown';
-import { StatusLine, useIdeaInput, useRunToggle } from '@/components/panels/InputBar';
+import { StatusLine, useRunInput, type RunInput } from '@/components/panels/InputBar';
 import { EMPTY_TITLE } from '@/components/panels/LeftPanel';
 import { AgentsSheet, BrainSheet, KeySheet, LogSheet, MapSheet, NodeSheet, SettingsSheet } from '@/components/panels/MobileSheets';
 import { PhaseBar } from '@/components/panels/PhaseBar';
@@ -64,41 +64,30 @@ function TopBar() {
   );
 }
 
-/** Serif idea input with Map it → (Grow → while a node is selected). Same behaviour as the desktop bar. */
-function MobileInputBar() {
-  const { text, setText, inputRef, submit, asking, busy, running, placeholder, actionLabel } = useIdeaInput();
+/** Serif idea input; Enter does what ▶ Run in the tab bar does (the bar has no button of its own). */
+function MobileInputBar({ r }: { r: RunInput }) {
   return (
     <div data-testid="mobile-input-bar" className="pointer-events-auto flex items-stretch border border-ink bg-panel shadow-[var(--shadow5)]">
       <input
-        ref={inputRef}
-        value={text}
-        maxLength={asking ? 300 : 2000}
-        disabled={busy === 'map'}
-        aria-label={asking ? 'Ask this node' : 'New idea'}
-        placeholder={placeholder}
+        ref={r.inputRef}
+        value={r.text}
+        maxLength={r.maxLength}
+        disabled={r.mapping}
+        aria-label={r.inputLabel}
+        placeholder={r.placeholder}
         enterKeyHint="go"
-        onChange={e => setText(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') void submit(); }}
+        onChange={e => r.setText(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') void r.run(); }}
         className="min-w-0 flex-1 border-none bg-transparent px-[14px] py-3 font-serif text-[21px] text-ink outline-none placeholder:text-muted placeholder:italic disabled:opacity-60"
       />
-      <button
-        type="button"
-        disabled={busy !== null || (asking && running)}
-        title={asking && running ? 'Agents are running' : undefined}
-        onClick={() => void submit()}
-        className="flex-none cursor-pointer whitespace-nowrap border-l border-ink bg-accent px-4 font-mono text-[11px] font-bold uppercase leading-[normal] tracking-[0.12em] text-on-accent disabled:cursor-default disabled:opacity-60"
-      >
-        {actionLabel}
-      </button>
     </div>
   );
 }
 
-/** Map · Agents · Log · Key tabs (each toggles its sheet) and ▶ Run / ❚❚ Pause. */
-function TabBar() {
+/** Map · Agents · Log · Key tabs (each toggles its sheet) and the one action: ▶ Run / ❚❚ Pause (Mapping… while mapping). */
+function TabBar({ r }: { r: RunInput }) {
   const sheet = useStore(s => s.ui.sheet);
   const setSheet = useStore(s => s.setSheet);
-  const run = useRunToggle();
   return (
     <nav aria-label="Panels" className="pointer-events-auto flex border border-ink bg-panel shadow-[var(--shadow5)]">
       {TABS.map(([id, icon, label]) => (
@@ -116,12 +105,12 @@ function TabBar() {
       ))}
       <button
         type="button"
-        title="Run agents"
-        disabled={run.disabled}
-        onClick={run.toggle}
+        title={r.active ? 'Pause the agents' : 'Run agents'}
+        disabled={r.disabled}
+        onClick={r.toggle}
         className="flex w-[27%] flex-none cursor-pointer items-center justify-center whitespace-nowrap bg-ink font-mono text-[11px] font-bold uppercase leading-[normal] tracking-[0.12em] text-panel disabled:cursor-default disabled:opacity-40"
       >
-        {run.active ? '❚❚ Pause' : '▶ Run'}
+        {r.active ? '❚❚ Pause' : r.mapping ? 'Mapping…' : '▶ Run'}
       </button>
     </nav>
   );
@@ -137,6 +126,8 @@ export function MobileShell() {
   const sheet = useStore(s => s.ui.sheet);
   const setSheet = useStore(s => s.setSheet);
   const select = useStore(s => s.select);
+  // One input state for the input bar and the tab bar's Run button.
+  const r = useRunInput();
 
   useEffect(() => {
     if (selected) setSheet('node');
@@ -171,8 +162,8 @@ export function MobileShell() {
       </div>
       <footer data-testid="mobile-bottom" className="flex flex-none flex-col gap-2">
         <StatusLine className="flex min-h-[14px] items-center justify-center gap-2 text-[10px] uppercase leading-[normal] tracking-[0.14em] text-muted [&>button]:pointer-events-auto" />
-        <MobileInputBar />
-        <TabBar />
+        <MobileInputBar r={r} />
+        <TabBar r={r} />
       </footer>
     </div>
   );

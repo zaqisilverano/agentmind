@@ -7,7 +7,7 @@ import { providerText } from '@/lib/grow';
 import { selectIsEmpty, useStore } from '@/lib/store';
 import { Sheet } from '@/components/ui/Sheet';
 import { AgentLogEntries } from './AgentLog';
-import { AgentRows } from './AgentTeam';
+import { AgentRows, RunScope } from './AgentTeam';
 import { BrainMenu } from './BrainDropdown';
 import { IdentityLine } from './IdentityLine';
 import { EMPTY_SUMMARY, EMPTY_TITLE } from './LeftPanel';
@@ -66,11 +66,12 @@ export function MapSheet() {
   );
 }
 
-/** AGENTS: the team rows and the phase bar. */
+/** AGENTS: the scoped run's node (while one runs), the team rows and the phase bar. */
 export function AgentsSheet() {
   return (
     <Sheet id="agents" title="Agent team" data-testid="agents-sheet">
       <div className="flex flex-col gap-0.5 px-[14px] pt-2 pb-[14px]">
+        <RunScope className="mb-1" />
         <AgentRows />
         <PhaseBar />
       </div>

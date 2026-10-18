@@ -56,7 +56,7 @@ function toRow(b: Brain): BrainListRow {
 }
 
 /** Status line while the user has no brains at all (first visit, or after deleting the last one). */
-export const EMPTY_STATUS = 'Type an idea to map your first second brain.';
+export const EMPTY_STATUS = 'Type an idea and press Run agents.';
 
 let selectToken = 0;
 

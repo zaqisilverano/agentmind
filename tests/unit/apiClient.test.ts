@@ -27,9 +27,9 @@ describe('apiClient', () => {
   });
 
   it('returns { data, meta } whole from LLM routes', async () => {
-    const env = { data: { children: [] }, meta: { source: 'fallback', attempts: 0 } };
+    const env = { data: { title: 't', summary: '', branches: [] }, meta: { source: 'fallback', attempts: 0 } };
     configureApiClient({ fetch: vi.fn().mockReturnValue(reply(env)) as unknown as typeof fetch });
-    expect(await apiClient.llm.expand({ title: 't', summary: '', path: ['a'], existing: [] })).toEqual(env);
+    expect(await apiClient.llm.map({ idea: 'an idea' })).toEqual(env);
   });
 
   it('unwraps the { data } envelope on restore, but returns health raw', async () => {

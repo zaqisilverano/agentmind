@@ -9,7 +9,8 @@ import { expect, test, type BrowserContext, type Locator, type Page } from '@pla
 
 const IDEA = 'A night market for repair services';
 const EMPTY_TITLE = 'Your second brain';
-const EMPTY_STATUS = 'Type an idea to map your first second brain.';
+const EMPTY_STATUS = 'Type an idea and press Run agents.';
+const BRANCH = 'What hurts today';
 const UID_DISPLAY_KEY = 'ab_uid_display';
 
 /** Console noise that is not an app error: SwiftShader's GPU stall warning and the missing favicon. */
@@ -36,7 +37,23 @@ const ui = (page: Page) => ({
   agentLog: page.getByTestId('agent-log'),
   brainButton: page.getByRole('button', { name: /^Second brain/ }),
   status: page.getByTestId('input-bar').getByRole('status'),
+  run: page.getByTestId('input-bar').getByRole('button', { name: /Run agents|Pause|Mapping/ }),
+  takeaway: page.getByTestId('takeaway-card'),
+  /** The log's entries, newest first, as the ids of the nodes they are about. */
+  logNodes: () => page.getByTestId('agent-log').locator('button[data-node]').evaluateAll(els => els.map(e => e.getAttribute('data-node') ?? '')),
 });
+
+/** The number in the agent log's "<n> entries" header. */
+const entries = async (page: Page) => Number((await ui(page).agentLog.getByText(/\d+ entries/).textContent())?.match(/\d+/)?.[0] ?? 0);
+
+/** Picks the rounds per run in the Settings menu. */
+async function setRounds(page: Page, n: number): Promise<void> {
+  const { toolbar } = ui(page);
+  await toolbar.getByRole('button', { name: /^Settings/ }).click();
+  await toolbar.getByRole('button', { name: String(n), exact: true }).click();
+  await expect(toolbar.getByRole('button', { name: String(n), exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+}
 
 /** Opens a toolbar dropdown by its trigger text and clicks one menu row. */
 async function pick(page: Page, trigger: RegExp, item: string): Promise<void> {
@@ -70,13 +87,25 @@ test.describe.serial('agentmind smoke', () => {
     await expect(status).toHaveText(EMPTY_STATUS);
     await expect(brainButton).toHaveText(/^Second brain\s*—/);
     await expect(brainButton).not.toContainText('№');
-    await expect(inputBar.getByRole('textbox', { name: 'New idea' })).toBeFocused();
-    await expect(inputBar.getByRole('button', { name: /Map it/ })).toBeEnabled();
-    await expect(inputBar.getByRole('button', { name: /Run agents/ })).toBeDisabled();
+    const input = inputBar.getByRole('textbox', { name: 'New idea' });
+    await expect(input).toBeFocused();
+    await expect(input).toHaveAttribute('placeholder', 'Type an idea — a startup, a story, a plan…');
+    await expect(inputBar.getByText('New brain', { exact: true })).toBeVisible();
+    // One action button: Run agents, disabled until there is something to run.
+    await expect(inputBar.getByRole('button')).toHaveCount(1);
+    await expect(inputBar.getByRole('button', { name: /Map it|Grow/ })).toHaveCount(0);
+    const run = inputBar.getByRole('button', { name: /Run agents/ });
+    await expect(run).toBeDisabled();
+    await input.press('Enter');
+    await expect(status).toHaveText(EMPTY_STATUS);
+    await input.fill('x');
+    await expect(run).toBeEnabled();
+    await input.fill('');
+    await expect(run).toBeDisabled();
     await expect(leftPanel.getByText('Legend — branches')).toHaveCount(0);
     await expect(leftPanel.getByText('Key takeaway')).toHaveCount(0);
     await expect(page.locator('.atlas-label')).toHaveCount(0);
-    await expect(ui(page).agentLog.getByText(/^Map an idea first\./)).toBeVisible();
+    await expect(ui(page).agentLog.getByText(/^Type an idea and press Run agents:/)).toBeVisible();
     await brainButton.click();
     await expect(leftPanel.getByRole('button', { name: '+ New second brain', exact: true })).toBeVisible();
     await expect(leftPanel.getByRole('button', { name: 'Delete this brain', exact: true })).toHaveCount(0);
@@ -88,31 +117,64 @@ test.describe.serial('agentmind smoke', () => {
     await expect(leftPanel).toBeVisible();
   });
 
-  test('2. typing an idea and pressing Enter maps a new brain', async () => {
-    const { inputBar, brainButton } = ui(page);
+  test('2. typing an idea and pressing Run agents maps a new brain and runs the agents on it', async () => {
+    test.setTimeout(150_000);
+    const { inputBar, brainButton, leftPanel, run, status } = ui(page);
+    await setRounds(page, 5);
     const input = inputBar.getByRole('textbox', { name: 'New idea' });
     await input.fill(IDEA);
-    await input.press('Enter');
+    await run.click();
     await expect(brainButton).toContainText('№ 001', { timeout: 10_000 });
     await expect(page.locator('.atlas-label', { hasText: /Night|Market|Repair/ }).first()).toBeAttached({ timeout: 10_000 });
+    await expect(input).toHaveValue('');
+    await expect(run).toHaveText(/Pause/);
+    await expect(status).toHaveText(/^Round \d\/5/, { timeout: 15_000 });
+    // Five rounds and the Strategist's takeaway.
+    await expect.poll(() => entries(page), { timeout: 90_000 }).toBeGreaterThanOrEqual(6);
+    await expect(leftPanel.getByText('Key takeaway')).toBeVisible({ timeout: 90_000 });
+    await expect(run).toHaveText(/Run agents/, { timeout: 30_000 });
+    await expect(status).toHaveText('Done · 5 rounds');
   });
 
-  test('3. clicking a legend row opens the node card', async () => {
-    const { leftPanel, nodeCard, chips } = ui(page);
-    await leftPanel.getByRole('button', { name: /What hurts today/ }).click();
+  test('3. clicking a legend row opens the node card and turns the input into a focus note', async () => {
+    const { leftPanel, nodeCard, chips, inputBar } = ui(page);
+    await leftPanel.getByRole('button', { name: new RegExp(BRANCH) }).click();
     await expect(nodeCard).toBeVisible();
     await expect(nodeCard.getByText('Night Market Repair', { exact: true })).toBeVisible(); // the path
-    await expect(nodeCard.getByText('What hurts today', { exact: true })).toBeVisible();
+    await expect(nodeCard.getByText(BRANCH, { exact: true })).toBeVisible();
     expect(await chips.count()).toBeGreaterThanOrEqual(1);
+    await expect(inputBar.getByText('Focus node', { exact: true })).toBeVisible();
+    await expect(inputBar.getByRole('textbox', { name: 'Focus note' })).toHaveAttribute('placeholder', `Steer the agents on “${BRANCH}” (optional)…`);
+    await expect(inputBar.getByRole('button', { name: /Run agents/ })).toBeEnabled();
   });
 
-  test('4. Expand this node adds children', async () => {
-    const { nodeCard, chips } = ui(page);
-    const before = await chips.count();
-    const expand = nodeCard.getByRole('button', { name: /Expand this node/ });
+  test('4. Expand with agents runs the agents inside that branch only', async () => {
+    test.setTimeout(150_000);
+    const { nodeCard, leftPanel, takeaway, run, status, logNodes } = ui(page);
+    // The agent log only shows while nothing is selected: count its entries, then reselect the branch.
+    await nodeCard.getByRole('button', { name: 'Close' }).click();
+    const before = await entries(page);
+    await leftPanel.getByRole('button', { name: new RegExp(BRANCH) }).click();
+    const expand = nodeCard.getByRole('button', { name: /Expand with agents/ });
     await expect(expand).toBeEnabled();
+    const branch = (await expand.getAttribute('data-node'))!;
+    expect(branch).toMatch(/^b\d$/);
+    const verdict = await takeaway.textContent();
+
     await expand.click();
-    await expect.poll(() => chips.count(), { timeout: 10_000 }).toBeGreaterThan(before);
+    await expect(run).toHaveText(/Pause/);
+    await expect(page.getByTestId('run-scope')).toHaveText(`Expanding ${BRANCH}`);
+    await expect(status).toHaveText(`Done · 5 rounds on ${BRANCH}`, { timeout: 90_000 });
+    await expect(run).toHaveText(/Run agents/, { timeout: 30_000 });
+    await expect(page.getByTestId('run-scope')).toHaveCount(0);
+
+    // Five new entries, no takeaway entry, every one about a node in the branch (ids grow from the branch id).
+    await expect.poll(() => entries(page)).toBe(before + 5);
+    const fresh = (await logNodes()).slice(0, 5);
+    expect(fresh).toHaveLength(5);
+    for (const id of fresh) expect(id === branch || id.startsWith(`${branch}c`) || id.startsWith(`${branch}x`)).toBe(true);
+    // A scoped run writes no takeaway, so the card is unchanged.
+    expect(await takeaway.textContent()).toBe(verdict);
   });
 
   test('5. View and Design switches do not throw', async () => {
@@ -171,25 +233,19 @@ test.describe.serial('agentmind smoke', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
   });
 
-  test('9. a five-round agent run fills the log and ends with a takeaway', async () => {
+  test('9. with an empty input, Run agents runs the open brain again and ends with a takeaway', async () => {
     test.setTimeout(150_000);
-    const { toolbar, nodeCard, agentLog, inputBar, leftPanel } = ui(page);
+    const { nodeCard, inputBar, run, status } = ui(page);
     // The agent log shows while nothing is selected.
     if (await nodeCard.isVisible()) await nodeCard.getByRole('button', { name: 'Close' }).click();
-    await toolbar.getByRole('button', { name: /^Settings/ }).click();
-    await toolbar.getByRole('button', { name: '5', exact: true }).click();
-    await expect(toolbar.getByRole('button', { name: '5', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await page.keyboard.press('Escape');
+    await expect(inputBar.getByRole('textbox', { name: 'New idea' })).toHaveValue('');
+    const before = await entries(page);
 
-    const entries = async () => Number((await agentLog.getByText(/\d+ entries/).textContent())?.match(/\d+/)?.[0] ?? 0);
-    const before = await entries();
-    await expect(leftPanel.getByText('Key takeaway')).toBeHidden();
-
-    await inputBar.getByRole('button', { name: /Run agents/ }).click();
-    await expect(inputBar.getByRole('button', { name: /Pause/ })).toBeVisible();
-    await expect.poll(entries, { timeout: 90_000 }).toBeGreaterThanOrEqual(before + 5);
-    await expect(leftPanel.getByText('Key takeaway')).toBeVisible({ timeout: 90_000 });
-    await expect(inputBar.getByRole('button', { name: /Run agents/ })).toBeVisible({ timeout: 30_000 });
+    await run.click();
+    await expect(run).toHaveText(/Pause/);
+    await expect(status).toHaveText('Done · 5 rounds', { timeout: 90_000 });
+    await expect(run).toHaveText(/Run agents/, { timeout: 30_000 });
+    await expect.poll(() => entries(page)).toBe(before + 6);
   });
 
   test('10. Restore ID brings the brains back in a fresh context', async ({ browser }) => {

@@ -9,7 +9,8 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 const IDEA = 'A night market for repair services';
 const TITLE = 'Night Market Repair';
 const EMPTY_TITLE = 'Your second brain';
-const EMPTY_STATUS = 'Type an idea to map your first second brain.';
+const EMPTY_STATUS = 'Type an idea and press Run agents.';
+const BRANCH = 'What hurts today';
 const IGNORED = [/GPU stall/i, /favicon\.ico/i];
 const SHOTS = Boolean(process.env.MOBILE_SCREENSHOTS);
 
@@ -27,6 +28,16 @@ const ui = (page: Page) => ({
   run: page.getByRole('navigation', { name: 'Panels' }).getByRole('button', { name: /Run$|Pause$/ }),
   sheet: (name: string) => page.getByRole('dialog', { name }),
 });
+
+/** Picks the rounds per run in the View & settings sheet. */
+async function setRounds(page: Page, n: number): Promise<void> {
+  const { settingsButton, sheet } = ui(page);
+  await settingsButton.click();
+  await sheet('View & settings').getByRole('button', { name: String(n), exact: true }).click();
+  await expect(sheet('View & settings').getByRole('button', { name: String(n), exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+  await expect(sheet('View & settings')).toHaveCount(0);
+}
 
 async function shot(page: Page, name: string): Promise<void> {
   if (!SHOTS) return;
@@ -72,7 +83,13 @@ test.describe.serial('agentmind on a phone', () => {
     await expect(page.getByTestId('input-bar')).toHaveCount(0);
     await expect(status).toHaveText(EMPTY_STATUS);
     await expect(input).toHaveAttribute('placeholder', 'Type an idea — a startup, a story, a plan…');
-    await expect(page.getByRole('button', { name: /Map it/ })).toBeEnabled();
+    // The input bar has no button: Run in the tab bar is the one action, disabled until there is something to run.
+    await expect(page.getByTestId('mobile-input-bar').getByRole('button')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Map it|Grow/ })).toHaveCount(0);
+    await expect(run).toBeDisabled();
+    await input.fill('x');
+    await expect(run).toBeEnabled();
+    await input.fill('');
     await expect(run).toBeDisabled();
     await expect(page.locator('.atlas-label')).toHaveCount(0);
 
@@ -84,14 +101,23 @@ test.describe.serial('agentmind on a phone', () => {
     await expect(sheet).toHaveCount(0);
   });
 
-  test('2. mapping an idea puts its title in the top bar and labels on the map', async () => {
-    const { input, brainButton, run } = ui(page);
+  test('2. Enter maps the idea, puts its title in the top bar and runs the agents to a takeaway', async () => {
+    test.setTimeout(150_000);
+    const { input, brainButton, run, status } = ui(page);
+    await setRounds(page, 5);
     await input.fill(IDEA);
     await input.press('Enter');
     await expect(brainButton).toContainText('№ 001', { timeout: 10_000 });
     await expect(brainButton).toContainText(TITLE);
     await expect(page.locator('.atlas-label', { hasText: /Night|Market|Repair/ }).first()).toBeAttached({ timeout: 10_000 });
-    await expect(run).toBeEnabled();
+    await expect(input).toHaveValue('');
+    await expect(run).toHaveText(/Pause/);
+    await expect(status).toHaveText(/^Round \d\/5/, { timeout: 15_000 });
+    await expect(page.locator('[aria-label="Run phase"] [aria-current="step"]').first()).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(2500);
+    await shot(page, 'run');
+    await expect(status).toHaveText('Done · 5 rounds', { timeout: 90_000 });
+    await expect(run).toHaveText(/Run$/, { timeout: 30_000 });
     // Labels sit under the chrome: the shell (z 5) stacks above the canvas and its label layer (z 0).
     const z = await page.evaluate(() => Number(getComputedStyle(document.querySelector('[data-testid="mobile-shell"]')!).zIndex));
     expect(z).toBeGreaterThan(0);
@@ -123,7 +149,7 @@ test.describe.serial('agentmind on a phone', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     await tab('Log').click();
-    await expect(sheet('Agent log').getByText(/^Press Run agents\./)).toBeVisible();
+    await expect.poll(() => sheet('Agent log').locator('button[data-node]').count()).toBeGreaterThanOrEqual(6); // 5 rounds and the takeaway
     await expect(sheet('Agent log')).toBeFocused(); // the sheet takes focus; it is non-modal
     await expect(sheet('Agent log')).not.toHaveAttribute('aria-modal', /.*/);
     await page.keyboard.press('Escape');
@@ -131,7 +157,8 @@ test.describe.serial('agentmind on a phone', () => {
     await expect(tab('Log')).toBeFocused(); // and gives it back on close
 
     await tab('Key').click();
-    await expect(sheet('Key takeaway').getByText('Run the agents to get a key takeaway.')).toBeVisible();
+    await expect(sheet('Key takeaway').getByRole('button', { name: /Hide path|Show path/ })).toBeVisible();
+    await expect(sheet('Key takeaway').getByText('Run the agents to get a key takeaway.')).toHaveCount(0);
     await page.getByTestId('sheet-backdrop').click({ position: { x: 40, y: 40 } });
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
@@ -166,18 +193,19 @@ test.describe.serial('agentmind on a phone', () => {
   });
 
   test('5. a branch in the Map sheet opens the node sheet', async () => {
-    const { tab, sheet, input } = ui(page);
+    const { tab, sheet, input, run } = ui(page);
     await tab('Map').click();
-    await sheet('Map').getByRole('button', { name: /What hurts today/ }).click();
+    await sheet('Map').getByRole('button', { name: new RegExp(BRANCH) }).click();
     const node = page.getByTestId('node-sheet');
     await expect(node).toBeVisible();
     await expect(sheet('Map')).toHaveCount(0);
-    await expect(node.getByText('What hurts today', { exact: true })).toBeVisible();
+    await expect(node.getByText(BRANCH, { exact: true })).toBeVisible();
     await expect(node.getByText(TITLE, { exact: true })).toBeVisible(); // the path
     expect(await node.getByTestId('node-children').getByRole('button').count()).toBeGreaterThanOrEqual(1);
-    await expect(node.getByRole('button', { name: /Expand this node/ })).toBeEnabled();
-    await expect(input).toHaveAttribute('aria-label', 'Ask this node');
-    await expect(page.getByRole('button', { name: /Grow/ })).toBeVisible();
+    await expect(node.getByRole('button', { name: /Expand with agents/ })).toBeEnabled();
+    await expect(input).toHaveAttribute('aria-label', 'Focus note');
+    await expect(input).toHaveAttribute('placeholder', `Steer the agents on “${BRANCH}” (optional)…`);
+    await expect(run).toBeEnabled();
     await shot(page, 'node');
     // Closing the sheet deselects the node.
     await node.getByRole('button', { name: 'Close' }).click();
@@ -185,28 +213,38 @@ test.describe.serial('agentmind on a phone', () => {
     await expect(input).toHaveAttribute('aria-label', 'New idea');
   });
 
-  test('6. a five-round run ends with a takeaway in the Key sheet', async () => {
+  test('6. Expand with agents in the node sheet runs the agents inside that branch, without a new takeaway', async () => {
     test.setTimeout(150_000);
-    const { settingsButton, sheet, tab, run, status } = ui(page);
-    await settingsButton.click();
-    await sheet('View & settings').getByRole('button', { name: '5', exact: true }).click();
-    await expect(sheet('View & settings').getByRole('button', { name: '5', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    const { tab, sheet, run, status } = ui(page);
+    await tab('Key').click();
+    await expect(sheet('Key takeaway').getByRole('button', { name: /Hide path|Show path/ })).toBeVisible();
+    const verdict = await sheet('Key takeaway').textContent();
+    await tab('Log').click();
+    await expect(sheet('Agent log').locator('button[data-node]').first()).toBeVisible();
+    const before = await sheet('Agent log').locator('button[data-node]').count();
     await page.keyboard.press('Escape');
 
-    await run.click();
+    await tab('Map').click();
+    await sheet('Map').getByRole('button', { name: new RegExp(BRANCH) }).click();
+    const node = page.getByTestId('node-sheet');
+    const expand = node.getByRole('button', { name: /Expand with agents/ });
+    const branch = (await expand.getAttribute('data-node'))!;
+    expect(branch).toMatch(/^b\d$/);
+    await expand.click();
+    await expect(node).toHaveCount(0); // the run deselects, so the sheet closes
     await expect(run).toHaveText(/Pause/);
-    await expect(status).toHaveText(/^Round \d\/5/, { timeout: 15_000 });
-    await expect(page.locator('[aria-label="Run phase"] [aria-current="step"]').first()).toBeVisible({ timeout: 15_000 });
-    await page.waitForTimeout(2500);
-    await shot(page, 'run');
-
-    await tab('Key').click(); // opening a sheet does not pause the run
-    const key = sheet('Key takeaway');
-    await expect(key.getByRole('button', { name: /Hide path|Show path/ })).toBeVisible({ timeout: 90_000 });
-    await expect(key.getByText('Run the agents to get a key takeaway.')).toHaveCount(0);
+    await tab('Agents').click();
+    await expect(sheet('Agent team').getByTestId('run-scope')).toHaveText(`Expanding ${BRANCH}`);
+    await expect(status).toHaveText(`Done · 5 rounds on ${BRANCH}`, { timeout: 90_000 });
     await expect(run).toHaveText(/Run$/, { timeout: 30_000 });
+
     await tab('Log').click();
-    expect(await sheet('Agent log').getByRole('button').count()).toBeGreaterThanOrEqual(6); // ≥ 5 entries and ×
+    await expect(sheet('Agent log').locator('button[data-node]')).toHaveCount(before + 5);
+    const ids = await sheet('Agent log').locator('button[data-node]').evaluateAll(els => els.map(e => e.getAttribute('data-node') ?? ''));
+    expect(ids.length).toBe(before + 5);
+    for (const id of ids.slice(0, 5)) expect(id === branch || id.startsWith(`${branch}c`) || id.startsWith(`${branch}x`)).toBe(true);
+    await tab('Key').click();
+    await expect(sheet('Key takeaway')).toHaveText(verdict ?? '');
     await page.keyboard.press('Escape');
   });
 

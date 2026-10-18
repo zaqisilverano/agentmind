@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import type { IdeaNode } from '@/engine/types';
-import { expandNode, pathNames } from '@/lib/grow';
+import { pathNames } from '@/lib/grow';
+import { expandWithAgents } from '@/lib/run';
 import { useStore } from '@/lib/store';
 import { deleteSubtree, editNode, renameBrain } from '@/lib/sync';
 import { Pill } from '@/components/ui/Pill';
@@ -23,7 +24,7 @@ export const NodeDot = ({ color }: { color: string }) => (
 
 /**
  * The node card below its header: path, name with Edit, AI note, My notes, child chips and cross-links in a scrolling
- * area, then Expand this node → and a two-step Delete (not on the core). Shared by the desktop card and the mobile
+ * area, then Expand with agents → (a scoped agent run on this node) and a two-step Delete (not on the core). Shared by the desktop card and the mobile
  * node sheet. Key it by the node id so switching nodes resets the edit form and saves the note.
  */
 export function NodeCardBody({ id }: { id: string }) {
@@ -126,10 +127,11 @@ export function NodeCardBody({ id }: { id: string }) {
           type="button"
           disabled={busy !== null || running}
           title={running ? 'Agents are running' : undefined}
-          onClick={() => void expandNode(id)}
+          data-node={id}
+          onClick={() => expandWithAgents(id)}
           className="flex-1 cursor-pointer bg-ink px-4 py-[13px] text-left font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] text-panel hover:bg-accent hover:text-on-accent disabled:cursor-default disabled:bg-ink disabled:text-panel/50"
         >
-          {busy === 'expand' ? 'Expanding…' : running ? 'Agents running…' : 'Expand this node →'}
+          {running ? 'Agents running…' : 'Expand with agents →'}
         </button>
         {id !== 'n0' && <TwoStepDelete key={id} title="Delete node and its branches" onConfirm={remove} className="border-l border-ink" />}
       </div>

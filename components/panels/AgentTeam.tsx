@@ -42,11 +42,23 @@ export function AgentRows() {
   );
 }
 
-/** Agent team list (icon, name, status, nodes added) and the Plan · Diverge · Connect · Takeaway phase bar. */
+/** "Expanding <node name>" while a scoped run ("Expand with agents") is going, else nothing. */
+export function RunScope({ className = '' }: { className?: string }) {
+  const name = useStore(s => (s.run.scope !== null && (s.run.active || s.run.phase !== null) ? s.brain?.nodes.find(n => n.id === s.run.scope)?.name ?? null : null));
+  if (name === null) return null;
+  return (
+    <div data-testid="run-scope" className={`truncate text-[10px] uppercase tracking-[0.14em] text-accent ${className}`} title={`Expanding ${name}`}>
+      Expanding {name}
+    </div>
+  );
+}
+
+/** Agent team list (icon, name, status, nodes added), the scoped run's node, and the Plan · Diverge · Connect · Takeaway phase bar. */
 export function AgentTeam() {
   return (
     <section className="flex flex-none flex-col gap-0.5 border-t border-ink pt-[10px]">
       <div className="mb-1.5 text-[10px] uppercase tracking-[0.18em] text-muted">Agent team</div>
+      <RunScope className="mb-1" />
       <AgentRows />
       <PhaseBar />
     </section>

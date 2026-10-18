@@ -86,7 +86,6 @@ const controllerApi: ControllerApi = {
   }),
   llm: {
     map: (body) => llm(fallback.map(body.idea) as MapReplyOut),
-    expand: (body) => llm(fallback.expand(body.path, body.question)),
     agentRound: (body) => llm(fallback.agentRound(body.agent, body.target as IdeaNode, body.nodes as IdeaNode[])),
     takeaway: (body) => llm(fallback.takeaway(body.nodes as IdeaNode[], body.links as CrossLink[])),
   },

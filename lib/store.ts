@@ -5,9 +5,10 @@ import type { BrainListRow, MeResponse } from '@/lib/apiClient';
 export type Phase = 'plan' | 'diverge' | 'connect' | 'takeaway';
 export type Rounds = 5 | 10 | 20;
 
-export interface RunState { active: boolean; paused: boolean; round: number; total: number; phase: Phase | null; agent: AgentId | null; status: string }
-/** `busy` marks an LLM call started from the UI (mapping a new brain or expanding a node); one at a time. */
-export type Busy = 'map' | 'expand' | null;
+/** `scope` is the node a scoped run ("Expand with agents") works under, null for a full run or no run. */
+export interface RunState { active: boolean; paused: boolean; round: number; total: number; phase: Phase | null; agent: AgentId | null; status: string; scope: string | null }
+/** `busy` marks an LLM call started from the UI outside a run (mapping a new brain); one at a time. */
+export type Busy = 'map' | null;
 /** Loading of the user and brain list: `pending` until `/api/me` answers, then `ready`, or `failed` if it could not be reached. */
 export type Boot = 'pending' | 'ready' | 'failed';
 /** The bottom sheet open in the mobile layout; one at a time. */
@@ -64,7 +65,7 @@ export const initialState: State = {
   mode: 'constellation',
   theme: 'atlas',
   settings: { rounds: 10 },
-  run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '' },
+  run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '', scope: null },
   ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null, boot: 'pending', sheet: null },
   provider: null,
   syncError: null,

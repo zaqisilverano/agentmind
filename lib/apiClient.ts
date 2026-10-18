@@ -1,8 +1,8 @@
 import type { z } from 'zod';
 import type { Brain, CrossLink, IdeaNode } from '@/engine/types';
 import type { AddLinksBody, AddNodesBody, CreateBrainBody, PatchBrainBody, PatchNodeBody, RoundBody, TakeawayBody } from '@/lib/brains/schemas';
-import type { AgentRoundBody, ExpandBody, MapBody, TakeawayBody as LlmTakeawayBody } from '@/lib/llm/bodies';
-import type { AgentRoundReplyOut, ExpandReplyOut, MapReplyOut, TakeawayReplyOut } from '@/lib/llm/schemas';
+import type { AgentRoundBody, MapBody, TakeawayBody as LlmTakeawayBody } from '@/lib/llm/bodies';
+import type { AgentRoundReplyOut, MapReplyOut, TakeawayReplyOut } from '@/lib/llm/schemas';
 
 /** A non-2xx response. `message` is the server's `{ error }` text when there is one. */
 export class ApiError extends Error {
@@ -26,7 +26,6 @@ export type PatchNodeRequest = z.input<typeof PatchNodeBody>;
 export type RoundRequest = z.input<typeof RoundBody>;
 export type TakeawayRequest = z.input<typeof TakeawayBody>;
 export type MapRequest = z.input<typeof MapBody>;
-export type ExpandRequest = z.input<typeof ExpandBody>;
 export type AgentRoundRequest = z.input<typeof AgentRoundBody>;
 export type LlmTakeawayRequest = z.input<typeof LlmTakeawayBody>;
 export type AddNodesRequest = z.input<typeof AddNodesBody>;
@@ -92,7 +91,6 @@ export const apiClient = {
   setTakeaway: (id: string, body: TakeawayRequest) => data<Brain>('POST', brainPath(id, '/takeaway'), body),
   llm: {
     map: (body: MapRequest) => llm<MapReplyOut>('/api/llm/map', body),
-    expand: (body: ExpandRequest) => llm<ExpandReplyOut>('/api/llm/expand', body),
     agentRound: (body: AgentRoundRequest) => llm<AgentRoundReplyOut>('/api/llm/agent-round', body),
     takeaway: (body: LlmTakeawayRequest) => llm<TakeawayReplyOut>('/api/llm/takeaway', body),
   },

@@ -6,7 +6,7 @@ import { NodeCardBody, NodeDot, nodeKindLabel } from './NodeCardBody';
 
 /**
  * Right-hand card for the selected node: kind and level with ×, then the shared card body (path, name with Edit,
- * AI note, My notes, child chips, cross-links, Expand this node → and a two-step Delete). Key it by the node id so
+ * AI note, My notes, child chips, cross-links, Expand with agents → and a two-step Delete). Key it by the node id so
  * switching nodes resets the edit form and saves the note.
  */
 export function NodeCard({ id }: { id: string }) {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getController } from '@/lib/controller';
 import { FOCUS_INPUT_EVENT } from '@/lib/events';
-import { expandNode, mapIdea } from '@/lib/grow';
+import { runAction, startFromInput } from '@/lib/run';
 import { useStore } from '@/lib/store';
 
 const ACTION = 'cursor-pointer whitespace-nowrap border-l border-ink font-mono text-[12px] font-bold uppercase leading-[normal] tracking-[0.12em] disabled:cursor-default';
@@ -39,15 +39,17 @@ export function StatusLine({ className }: { className: string }) {
 }
 
 /**
- * State and actions of the idea input, shared by both layouts. With no node selected, submitting maps the typed idea
- * into a new brain; with one selected it grows that node from the question. Focuses on FOCUS_INPUT_EVENT.
+ * The idea input and the one ▶ Run agents / ❚❚ Pause action, shared by both layouts. Run (or Enter) maps typed text
+ * into a new brain and runs the agents on it, runs the open brain when the input is empty, or, with a node selected,
+ * starts a scoped run on that node with the text as its focus note (see `startFromInput`). While a run is active the
+ * button pauses it. Focuses the input on FOCUS_INPUT_EVENT.
  */
-export function useIdeaInput() {
+export function useRunInput() {
   const selectedName = useStore(s => (s.selected ? s.brain?.nodes.find(n => n.id === s.selected)?.name ?? null : null));
-  const selected = useStore(s => s.selected);
   const busy = useStore(s => s.ui.busy);
-  const running = useStore(s => s.run.active || s.run.phase !== null);
+  const active = useStore(s => s.run.active);
   const [text, setText] = useState('');
+  const action = useStore(s => runAction(text, s));
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -56,79 +58,58 @@ export function useIdeaInput() {
     return () => window.removeEventListener(FOCUS_INPUT_EVENT, focus);
   }, []);
 
-  const submit = async () => {
-    const idea = text.trim();
-    if (!idea || busy) return;
-    if (selected) {
-      if (running) return;
-      if (await expandNode(selected, idea)) setText('');
-      return;
-    }
-    if (await mapIdea(idea)) setText('');
+  const run = async () => {
+    if (await startFromInput(text)) setText('');
   };
-
-  const asking = selectedName !== null;
-  return {
-    text, setText, inputRef, submit, asking, busy, running,
-    placeholder: asking ? `Ask a follow-up about “${selectedName}” to grow it…` : 'Type an idea — a startup, a story, a plan…',
-    actionLabel: busy === 'map' ? 'Mapping…' : busy === 'expand' ? 'Growing…' : asking ? 'Grow →' : 'Map it →',
-  };
-}
-
-/** ▶ Run / ❚❚ Pause: whether a run is active, whether the button is usable, and the toggle. */
-export function useRunToggle() {
-  const hasBrain = useStore(s => s.brain !== null);
-  const active = useStore(s => s.run.active);
   const toggle = () => {
-    const c = getController();
-    if (active) c?.pause();
-    else c?.startRun();
+    if (active) getController()?.pause();
+    else void run();
   };
-  return { active, disabled: !hasBrain && !active, toggle };
+
+  const focusing = selectedName !== null;
+  return {
+    text, setText, inputRef, run, toggle, active, focusing,
+    mapping: busy === 'map',
+    disabled: !active && (busy !== null || action === null),
+    placeholder: focusing ? `Steer the agents on “${selectedName}” (optional)…` : 'Type an idea — a startup, a story, a plan…',
+    inputLabel: focusing ? 'Focus note' : 'New idea',
+    maxLength: focusing ? 300 : 2000,
+  };
 }
+
+export type RunInput = ReturnType<typeof useRunInput>;
 
 /**
- * Bottom bar: "New brain" maps a typed idea into a new brain; with a node selected it becomes "Ask node" and grows
- * that node from the question. ▶ Run agents / ❚❚ Pause drives the controller's runner. A failed save shows
- * "Not saved · Retry" next to the status.
+ * Bottom bar: "New brain" while nothing is selected, "Focus node" with a node selected, the serif input, and the one
+ * ▶ Run agents / ❚❚ Pause button. A failed save shows "Not saved · Retry" next to the status.
  */
 export function InputBar() {
-  const { text, setText, inputRef, submit, asking, busy, running, placeholder, actionLabel } = useIdeaInput();
-  const run = useRunToggle();
+  const r = useRunInput();
 
   return (
     <div data-testid="input-bar" className="fixed bottom-11 left-1/2 z-[2] flex w-[min(720px,calc(100%-88px))] -translate-x-1/2 flex-col gap-2">
       <StatusLine className="flex min-h-[14px] items-center justify-center gap-2 text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-muted" />
       <div className="flex items-stretch border border-ink bg-panel shadow-[var(--shadow5)]">
-        <div className="flex items-center whitespace-nowrap border-r border-ink px-[14px] text-[10px] uppercase tracking-[0.16em]">{asking ? 'Ask node' : 'New brain'}</div>
+        <div className="flex items-center whitespace-nowrap border-r border-ink px-[14px] text-[10px] uppercase tracking-[0.16em]">{r.focusing ? 'Focus node' : 'New brain'}</div>
         <input
-          ref={inputRef}
-          value={text}
-          maxLength={asking ? 300 : 2000}
-          disabled={busy === 'map'}
-          aria-label={asking ? 'Ask this node' : 'New idea'}
-          placeholder={placeholder}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') void submit(); }}
+          ref={r.inputRef}
+          value={r.text}
+          maxLength={r.maxLength}
+          disabled={r.mapping}
+          aria-label={r.inputLabel}
+          placeholder={r.placeholder}
+          onChange={e => r.setText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') void r.run(); }}
           className="min-w-0 flex-1 border-none bg-transparent px-4 py-[14px] font-serif text-[24px] text-ink outline-none placeholder:text-muted placeholder:italic disabled:opacity-60"
         />
         <button
           type="button"
-          disabled={busy !== null || (asking && running)}
-          title={asking && running ? 'Agents are running' : undefined}
-          onClick={() => void submit()}
+          title={r.active ? 'Pause the agents' : 'Run agents'}
+          disabled={r.disabled}
+          onClick={r.toggle}
           className={`${ACTION} bg-accent px-[22px] text-on-accent hover:bg-ink hover:text-panel disabled:opacity-60`}
         >
-          {actionLabel}
-        </button>
-        <button
-          type="button"
-          title="Run agents"
-          disabled={run.disabled}
-          onClick={run.toggle}
-          className={`${ACTION} bg-ink px-[18px] text-panel hover:bg-accent hover:text-on-accent disabled:opacity-40`}
-        >
-          {run.active ? '❚❚ Pause' : '▶ Run agents'}
+          {r.active ? '❚❚ Pause' : r.mapping ? 'Mapping…' : '▶ Run agents'}
         </button>
       </div>
     </div>

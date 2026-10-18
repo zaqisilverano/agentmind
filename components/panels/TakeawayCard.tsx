@@ -61,7 +61,7 @@ export function TakeawayCard() {
   if (!synth) return null;
 
   return (
-    <Panel shadow={3} className="flex flex-none flex-col gap-2 px-[14px] py-3">
+    <Panel data-testid="takeaway-card" shadow={3} className="flex flex-none flex-col gap-2 px-[14px] py-3">
       <div className="flex items-center gap-2">
         <TakeawayMark />
         <span className="flex-1 text-[10px] uppercase tracking-[0.18em] text-muted">Key takeaway</span>

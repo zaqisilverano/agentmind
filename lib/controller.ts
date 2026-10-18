@@ -1,11 +1,11 @@
 import type { AtlasScene } from '@/engine/AtlasScene';
 import { THEMES } from '@/engine/themes';
-import { AgentRunner, type RunnerDeps } from '@/lib/agents/runner';
+import { AgentRunner, type RunOptions, type RunnerDeps } from '@/lib/agents/runner';
 import { apiClient, type ApiClient } from '@/lib/apiClient';
 import { useStore } from '@/lib/store';
 import { applyRound, setTakeaway } from '@/lib/sync';
 
-/** The API calls the UI makes outside the sync layer: loading the user, and the four LLM routes. */
+/** The API calls the UI makes outside the sync layer: loading the user, and the map, agent-round and takeaway LLM routes. */
 export type ControllerApi = Pick<ApiClient, 'me' | 'llm'>;
 
 let api: ControllerApi = apiClient;
@@ -18,8 +18,12 @@ export function configureController(opts: { api?: ControllerApi } = {}): void {
 export const controllerApi = (): ControllerApi => api;
 
 export interface Controller {
-  /** Starts a run of `settings.rounds` rounds on the open brain. No-op without a brain or while the last run is still winding down. */
-  startRun: () => void;
+  /**
+   * Starts a run of `settings.rounds` rounds on the open brain; with `scope`, a scoped run on that node's subtree (with
+   * the optional `focus` note). No-op without a brain, with a scope node that is not in it, or while the last run is
+   * still winding down.
+   */
+  startRun: (opts?: RunOptions) => void;
   /** Stops the run after the current step. */
   pause: () => void;
   /** True while the runner's loop is still going, including the wind-down after `pause()`. */
@@ -70,7 +74,10 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
       r.on('status', (text) => store().setStatus(text)),
       r.on('round', (round) => store().setRun({ round })),
       r.on('finished', () => {
+        // A scoped run writes no takeaway, so it leaves the takeaway card as it was.
+        const scoped = store().run.scope !== null;
         store().setRun({ active: false, paused: false, phase: null, agent: null });
+        if (scoped) return;
         store().setTakeawayOpen(true);
         store().setShowPath(true);
       }),
@@ -101,17 +108,19 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
     get running() {
       return runner?.running ?? false;
     },
-    startRun() {
+    startRun(opts = {}) {
       const s = store();
       const brain = s.brain;
       if (!brain) return;
+      const scope = opts.scope ?? null;
+      if (scope !== null && !brain.nodes.some((n) => n.id === scope)) return;
       const r = ensure();
       if (r.running) return;
       const rounds = s.settings.rounds;
       // A pending syncError (an unsaved edit) is kept: its Retry must survive the run. The runner checks each save's own result.
       s.select(null);
-      s.setRun({ active: true, paused: false, round: brain.round, total: brain.round + rounds, phase: null, agent: null, status: '' });
-      void r.start(brain.id, rounds).finally(() => store().setRun({ active: false, phase: null, agent: null }));
+      s.setRun({ active: true, paused: false, round: brain.round, total: brain.round + rounds, phase: null, agent: null, status: '', scope });
+      void r.start(brain.id, rounds, scope === null ? {} : { scope, focus: opts.focus }).finally(() => store().setRun({ active: false, phase: null, agent: null, scope: null }));
     },
     pause() {
       if (runner?.running) store().setStatus('Pausing after this round…');
