@@ -52,6 +52,8 @@ Each round: **plan → travel → think → spawn → link → done**.
 
 Next.js 16 (App Router, Turbopack), React 19.3, TypeScript 6, Tailwind v4, three r186, Zustand, Zod, Drizzle with Postgres 18, ESLint 9, Vitest with pglite, Playwright, Docker Compose with Caddy 2.11. Node 24 LTS, pnpm 12.
 
+ESLint stays on 9 until eslint-plugin-react, eslint-plugin-import and eslint-plugin-jsx-a11y support ESLint 10, and TypeScript stays on 6.0 until typescript-eslint supports TypeScript 7.
+
 ## Quick start
 
 Requirements: Node 24, pnpm 12 (the exact version is pinned in `packageManager`), Docker.
@@ -226,10 +228,11 @@ The app container is then named `agentmind` and the proxy reaches it at `http://
 Backup:
 
 ```sh
-docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > backup.sql
+install -d -m 700 ~/backups
+(umask 077; docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > ~/backups/agentmind-$(date +%F).sql)
 ```
 
-Pass `--env-file .env` on every compose command for this stack. The command reads the Postgres user and database from the container's own environment, and `-T` keeps the dump free of terminal control characters.
+Keep dumps outside the clone (`*.sql` and `backups/` are also in `.gitignore` and `.dockerignore`). Pass `--env-file .env` on every compose command for this stack. The command reads the Postgres user and database from the container's own environment, and `-T` keeps the dump free of terminal control characters.
 
 ### Continuous deployment
 
@@ -247,15 +250,49 @@ The workflow needs these repository secrets:
 
 > [!IMPORTANT]
 > First deploy on a server that ran the old `agentic-brainstorm` stack: stop the old compose project (`docker compose -p docker … down`), point your reverse proxy at `agentmind:3000`, make sure `~/apps/agentmind` is a clone with an `origin` remote on GitHub, and copy the Postgres volume from `docker_ab_pg` to `agentmind_ab_pg` if you want to keep existing brains.
->
-> Postgres 18 uses a new volume, `agentmind_ab_pg18`, so a server that ran Postgres 16 starts on an empty database. To keep existing brains, stop the app (`docker stop agentmind`) and dump the old database while the Postgres 16 container still runs, then deploy the new compose files, start only the new database (`docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --wait db`) and restore into it before starting the app:
->
-> ```sh
-> docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > agentmind-pg16.sql
-> docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"' < agentmind-pg16.sql
-> ```
->
-> The old volume stays untouched as a rollback.
+
+#### Moving from Postgres 16 to 18
+
+Postgres 18 uses a new volume, `agentmind_ab_pg18`, and the old `agentmind_ab_pg` is left alone. A normal deploy would start the app on the new, empty database, and the migrator would create the schema there, so a restore afterwards would conflict. Move the data by hand, with deploys paused:
+
+1. On your machine, pause deploys, then push:
+
+   ```sh
+   gh workflow disable Deploy
+   git push
+   ```
+
+2. On the server, in `~/apps/agentmind` (still on the old commit, Postgres 16 running), stop the app so nothing is written after the dump, then dump the old database outside the clone:
+
+   ```sh
+   cd ~/apps/agentmind
+   docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml stop app
+   install -d -m 700 ~/backups
+   (umask 077; docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > ~/backups/agentmind-pg16.sql)
+   chmod 600 ~/backups/agentmind-pg16.sql
+   ```
+
+3. Update the checkout, start only the new `db` service and restore into it:
+
+   ```sh
+   git fetch -q && git reset -q --hard origin/main
+   docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --wait db
+   docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"' < ~/backups/agentmind-pg16.sql
+   docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -tAc "select count(*) from brains"'
+   ```
+
+   The commands read the Postgres user and database from the container's environment (set from `.env`), so no password goes on a command line. Compare the count with the old database before going on.
+
+4. Deploy and check health:
+
+   ```sh
+   bash scripts/deploy.sh origin/main
+   curl -fsS https://<DOMAIN>/api/health   # expect "db":true
+   ```
+
+5. On your machine, turn deploys back on: `gh workflow enable Deploy`.
+
+To roll back, check out the previous commit and run `up -d --build`: the app goes back to `agentmind_ab_pg` as it was at the dump. Anything written after the cutover exists only in the Postgres 18 volume and is lost in a rollback.
 
 ## Privacy
 
