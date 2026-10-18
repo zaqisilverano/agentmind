@@ -83,7 +83,9 @@ Copy `.env.example` to `.env`. The environment is validated on first use; the co
 | `LLM_API_KEY` | empty | Bearer token for the provider. Empty means the offline fallback. |
 | `LLM_REASONING_EFFORT` | unset | Optional: `low`, `medium` or `high`. Sent as `chat_template_kwargs.reasoning_effort` only when set. |
 | `RATE_LIMIT_PER_HOUR` | `60` | LLM requests per hour, applied per user and per client IP. Kept in process memory. |
-| `DOMAIN` | `agentmind.zaqi.build` | Production only. Public host name that Caddy serves and gets a TLS certificate for. |
+| `UMAMI_SCRIPT_URL` | empty | Optional. URL of the tracker script on your own [Umami](https://umami.is) server, for example `https://stats.example.com/script.js`. Must be https in production. Set it together with `UMAMI_WEBSITE_ID`, or leave both empty for no analytics: no script, no CSP change, no network calls. When set, page CSP `connect-src` also allows the script's origin, where the tracker posts events. See [Privacy](#privacy). |
+| `UMAMI_WEBSITE_ID` | empty | Optional. The website's UUID from the Umami dashboard, sent as `data-website-id`. |
+| `DOMAIN` | `agentmind.zaqi.build` | Production only. Public host name that Caddy serves and gets a TLS certificate for. With Umami configured, a plain host name here is also sent as `data-domains`, so only visits to that host are counted. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `atlas`, `atlas`, `atlas` | Production only. Credentials for the Postgres container in `docker/compose.yml`. Not in `.env.example`; set them in `.env` if you change them, and keep `DATABASE_URL` in step. |
 
 <details>
@@ -296,7 +298,15 @@ To roll back, check out the previous commit and run `up -d --build`: the app goe
 
 ## Privacy
 
-There are no accounts and no analytics. The app sets one cookie, `ab_uid`, which holds a random id signed with `COOKIE_SECRET`.
+There are no accounts. The app sets one cookie, `ab_uid`, which holds a random id signed with `COOKIE_SECRET`.
+
+Analytics: when the operator configures [Umami](https://umami.is) (`UMAMI_SCRIPT_URL` and `UMAMI_WEBSITE_ID`; the public instance at agentmind.zaqi.build does), page views and four events are counted with Umami, a self-hosted, cookie-less analytics tool. The events carry only fixed labels and counts:
+- `map`: a new brain was mapped, with `source` (`model` or `fallback`) and `nodes` (how many).
+- `run`: a full agent run started, with `rounds`.
+- `expand`: a scoped run started from a node, with `rounds` and `focus` (`yes` or `no`, never the focus text).
+- `download`: an export was saved, with `format` (`markdown`, `json` or `html3d`).
+
+Umami sets no cookies and stores no personal data: it does not keep IP addresses, only the page, the referrer, and the browser, OS, device type and country of a visit. No idea text, node names, notes, your anonymous id or anything else you type is sent. Browsers with Do Not Track turned on are not counted. The stats live on the operator's own Umami server, not with a third party. With both settings empty (the default) the app loads no tracker and makes no analytics calls.
 
 Stored on the server: your brains (title, summary, nodes, notes, links, agent log), your anonymous id, and a last-seen timestamp. A first visit stores only the anonymous id; no brain or sample data is stored until you map an idea. Preferences (layout, theme, rounds, panel visibility) and a copy of your id for display stay in your browser's `localStorage`.
 
@@ -314,7 +324,7 @@ If you run your own instance, you are the operator of that data.
 
 ## Security
 
-- Content Security Policy with a per-request nonce on pages (`proxy.ts`), and a strict static CSP on API routes. Also `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and a restrictive `Permissions-Policy`.
+- Content Security Policy with a per-request nonce on pages (`proxy.ts`), and a strict static CSP on API routes. With Umami configured, the page policy adds only the tracker's origin to `connect-src`; the tracker script carries the nonce. Also `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and a restrictive `Permissions-Policy`.
 - Rate limits on LLM routes, per user and per IP.
 - JSON bodies are capped at 256 KB and validated with Zod.
 - JSON POST routes require `application/json` and reject a cross-origin `Origin` header.

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Optional privacy-friendly analytics with self-hosted Umami: set `UMAMI_SCRIPT_URL` and `UMAMI_WEBSITE_ID` to load the cookie-less tracker (nonced, `data-do-not-track`) and count page views plus four events with no user text: `map` (`source`, `nodes`), `run` (`rounds`), `expand` (`rounds`, `focus` yes/no) and `download` (`format`). The page CSP then allows `connect-src` to the tracker's origin. Both empty (the default) changes nothing.
 - Scoped agent runs: "Expand with agents" on a node (or Run agents with a node selected) runs the agents on that node and its descendants only, with no takeaway at the end. Text in the input becomes an optional focus note sent with every round (`focus` on `POST /api/llm/agent-round`, up to 300 characters).
 - Continuous deployment: `.github/workflows/deploy.yml` deploys `main` to the VPS over SSH with `scripts/deploy.sh` after a green CI run, then checks `/api/health`.
 - Mobile layout with bottom sheets: below 768 px a top bar, a phase bar, a tab bar (Map, Agents, Log, Key, Run) and one bottom sheet at a time replace the desktop panels.
