@@ -4,7 +4,7 @@ import type { LlmMeta } from '@/lib/apiClient';
 import { controllerApi, getController } from '@/lib/controller';
 import { fromBranches } from '@/lib/ids';
 import { useStore, type Provider } from '@/lib/store';
-import { createBrain } from '@/lib/sync';
+import { createBrain, openEpoch } from '@/lib/sync';
 
 const store = () => useStore.getState();
 
@@ -27,28 +27,41 @@ export function pathNames(nodes: IdeaNode[], id: string): string[] {
   return out;
 }
 
-/** New brain from a typed idea: map it with the LLM, then create and open it. Resolves true when the brain was created. */
-export async function mapIdea(text: string): Promise<boolean> {
+/** A brain made by `mapIdea`. `opened` is false when the user opened, deleted or switched brains while it was mapping. */
+export interface Mapped { id: string; title: string; opened: boolean }
+
+/**
+ * New brain from a typed idea: map it with the LLM, then create and open it. Resolves the created brain, or null when
+ * nothing was created. A brain created after the user moved elsewhere is saved and listed but not opened.
+ */
+export async function mapIdea(text: string): Promise<Mapped | null> {
   const idea = text.trim();
-  if (store().ui.busy) return false;
+  if (store().ui.busy) return null;
   if (idea.length < 3) {
     store().setStatus('Type a few words first');
-    return false;
+    return null;
   }
   getController()?.pause();
   store().select(null);
+  // A brain opened, deleted or reset while the LLM maps means the user moved on: save the new brain but do not open it.
+  const since = openEpoch();
   store().setBusy('map');
   store().setStatus('Mapping your idea…');
   try {
     const { data, meta } = await controllerApi().llm.map({ idea: idea.slice(0, 2000) });
     store().setProvider(meta);
     const { title, summary, nodes } = fromBranches(data, THEMES[store().theme].ink);
-    const brain = await createBrain(title, summary, nodes);
-    store().setStatus(brain ? `${nodes.length} nodes · ${providerText(meta)}` : 'The new brain was not saved');
-    return brain !== null;
+    const brain = await createBrain(title, summary, nodes, [], { since });
+    if (!brain) {
+      store().setStatus('The new brain was not saved');
+      return null;
+    }
+    const opened = store().brain?.id === brain.id;
+    store().setStatus(opened ? `${nodes.length} nodes · ${providerText(meta)}` : `Mapped “${brain.title}”. Open it and press Run agents.`);
+    return { id: brain.id, title: brain.title, opened };
   } catch (e) {
     store().setStatus(`Could not map the idea: ${errorText(e)}`);
-    return false;
+    return null;
   } finally {
     store().setBusy(null);
   }

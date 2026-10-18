@@ -103,7 +103,7 @@ test.describe.serial('agentmind smoke', () => {
     await input.fill('');
     await expect(run).toBeDisabled();
     await expect(leftPanel.getByText('Legend — branches')).toHaveCount(0);
-    await expect(leftPanel.getByText('Key takeaway')).toHaveCount(0);
+    await expect(leftPanel.getByText('Key takeaway', { exact: true })).toHaveCount(0);
     await expect(page.locator('.atlas-label')).toHaveCount(0);
     await expect(ui(page).agentLog.getByText(/^Type an idea and press Run agents:/)).toBeVisible();
     await brainButton.click();
@@ -119,7 +119,7 @@ test.describe.serial('agentmind smoke', () => {
 
   test('2. typing an idea and pressing Run agents maps a new brain and runs the agents on it', async () => {
     test.setTimeout(150_000);
-    const { inputBar, brainButton, leftPanel, run, status } = ui(page);
+    const { inputBar, brainButton, takeaway, run, status } = ui(page);
     await setRounds(page, 5);
     const input = inputBar.getByRole('textbox', { name: 'New idea' });
     await input.fill(IDEA);
@@ -131,7 +131,8 @@ test.describe.serial('agentmind smoke', () => {
     await expect(status).toHaveText(/^Round \d\/5/, { timeout: 15_000 });
     // Five rounds and the Strategist's takeaway.
     await expect.poll(() => entries(page), { timeout: 90_000 }).toBeGreaterThanOrEqual(6);
-    await expect(leftPanel.getByText('Key takeaway')).toBeVisible({ timeout: 90_000 });
+    // The card, not the Strategist's "writing the key takeaway…" row, which also matches the text.
+    await expect(takeaway).toBeVisible({ timeout: 90_000 });
     await expect(run).toHaveText(/Run agents/, { timeout: 30_000 });
     await expect(status).toHaveText('Done · 5 rounds');
   });
@@ -294,7 +295,7 @@ test.describe.serial('agentmind smoke', () => {
     await expect(leftPanel.getByText(EMPTY_TITLE, { exact: true })).toBeVisible();
     await expect(status).toHaveText(EMPTY_STATUS);
     await expect(leftPanel.getByText('Legend — branches')).toHaveCount(0);
-    await expect(leftPanel.getByText('Key takeaway')).toHaveCount(0);
+    await expect(leftPanel.getByText('Key takeaway', { exact: true })).toHaveCount(0);
     await expect(page.locator('.atlas-label')).toHaveCount(0);
     await brainButton.click();
     await expect(leftPanel.getByRole('button', { name: /Night Market Repair/ })).toHaveCount(0);

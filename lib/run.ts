@@ -16,7 +16,8 @@ export function runAction(text: string, s = store()): RunAction {
 
 /**
  * ▶ Run agents and Enter in the input. With a node selected: a scoped run on it, the text as its optional focus note.
- * With text and no selection: maps the idea into a new brain, then runs the agents on it. With neither: a full run on
+ * With text and no selection: maps the idea into a new brain, then runs the agents on it if it is still the open brain
+ * (a switch, delete or open while mapping leaves the new brain unopened and unrun). With neither: a full run on
  * the open brain. Resolves true when the input should be cleared (the run started, or the idea was mapped); false
  * keeps the text, e.g. after a failed map (whose error is in the status line). No-op while mapping or while a run is
  * still going or winding down.
@@ -32,8 +33,11 @@ export async function startFromInput(text: string): Promise<boolean> {
     return true;
   }
   if (action === 'map') {
-    if (!(await mapIdea(text))) return false;
-    getController()?.startRun();
+    const mapped = await mapIdea(text);
+    if (!mapped) return false;
+    // Run only the brain just mapped, and only if it is the one open (the user may have switched while it mapped).
+    // Either way the brain exists now, so the input clears.
+    if (mapped.opened && store().brain?.id === mapped.id) getController()?.startRun({ brainId: mapped.id });
     return true;
   }
   if (action === 'run') {

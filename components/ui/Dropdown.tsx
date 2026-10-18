@@ -24,17 +24,23 @@ export interface DropdownProps {
   menuGap?: number;
   /** Which theme shadow the menu casts. */
   menuShadow?: 3 | 5;
+  /** Disables the trigger and closes the menu while true. */
+  disabled?: boolean;
 }
 
 /** A trigger button and its menu. Closes on outside pointer-down and on Esc. */
-export function Dropdown({ id, label, children, align = 'right', title, className = 'flex', triggerClassName = '', menuClassName = '', menuGap = 12, menuShadow = 5 }: DropdownProps) {
-  const open = useStore(s => s.ui.openDropdown === id);
+export function Dropdown({ id, label, children, align = 'right', title, className = 'flex', triggerClassName = '', menuClassName = '', menuGap = 12, menuShadow = 5, disabled = false }: DropdownProps) {
+  const open = useStore(s => s.ui.openDropdown === id) && !disabled;
   const setOpenDropdown = useStore(s => s.setOpenDropdown);
   const ref = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
     if (useStore.getState().ui.openDropdown === id) setOpenDropdown(null);
   }, [id, setOpenDropdown]);
+
+  useEffect(() => {
+    if (disabled) close();
+  }, [disabled, close]);
 
   useEffect(() => {
     if (!open) return;
@@ -56,9 +62,10 @@ export function Dropdown({ id, label, children, align = 'right', title, classNam
         title={title}
         aria-haspopup="true"
         aria-expanded={open}
+        disabled={disabled}
         data-open={open ? 'true' : undefined}
         onClick={() => setOpenDropdown(open ? null : id)}
-        className={`group cursor-pointer ${triggerClassName}`}
+        className={`group cursor-pointer disabled:cursor-default disabled:opacity-60 ${triggerClassName}`}
       >
         {typeof label === 'function' ? label(open) : label}
       </button>

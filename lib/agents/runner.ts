@@ -4,7 +4,7 @@ import { BRAIN_FULL_MESSAGE, MAX_NODES_PER_BRAIN } from '@/lib/brains/limits';
 import { makeKids } from '@/lib/agents/makeKids';
 import { pickTarget, subtreeIds } from '@/lib/agents/pickTarget';
 import type { apiClient, LlmMeta } from '@/lib/apiClient';
-import { mapLines } from '@/lib/llm/prompts';
+import { cleanFocus, mapLines } from '@/lib/llm/prompts';
 import type { RoundInput } from '@/lib/sync';
 
 export type Phase = 'plan' | 'diverge' | 'connect' | 'takeaway';
@@ -99,7 +99,7 @@ export class AgentRunner {
 
   private async loop(brainId: string, rounds: number, { scope, focus: rawFocus }: RunOptions): Promise<void> {
     const { deps } = this;
-    const focus = rawFocus?.trim().slice(0, 300) || undefined;
+    const focus = cleanFocus(rawFocus);
     const sleep = deps.sleep ?? defaultSleep;
     const rand = deps.rand ?? Math.random;
     const now = deps.now ?? Date.now;
@@ -127,6 +127,9 @@ export class AgentRunner {
     let completed = brain()?.round ?? 0;
     const startRound = completed;
     let finished = false;
+    /** The scope node's last known name, for the status when it is deleted mid-run. */
+    let scopeName = scope === undefined ? undefined : brain()?.nodes.find((n) => n.id === scope)?.name;
+    let scopeLost = false;
     try {
       for (let i = 0; i < rounds && alive(); i++) {
         const before = brain();
@@ -136,8 +139,13 @@ export class AgentRunner {
         // A full brain stops the run before spending an LLM call (the server enforces the same ceiling).
         const room = MAX_NODES_PER_BRAIN - before.nodes.length;
         if (room <= 0) throw new Error(BRAIN_FULL_MESSAGE);
-        // A scope whose node is gone (deleted mid-run) yields no target and ends the run.
+        // A scope whose node is gone (deleted mid-run) ends the run.
         const within = scope === undefined ? undefined : subtreeIds(before.nodes, scope);
+        if (within && within.size === 0) {
+          scopeLost = true;
+          break;
+        }
+        if (scope !== undefined) scopeName = before.nodes.find((n) => n.id === scope)?.name ?? scopeName;
         const target = pickTarget(agent, before.nodes, this.hits.counts, rand, within);
         if (!target) break;
         this.hits.counts[target.id] = (this.hits.counts[target.id] ?? 0) + 1;
@@ -193,7 +201,9 @@ export class AgentRunner {
         await leave();
       }
 
-      if (alive() && completed - startRound >= rounds) {
+      // Deleted during the last round: the loop ran out, but the run did not finish on its node.
+      if (scope !== undefined && !scopeLost && brain()?.nodes.some((n) => n.id === scope) === false) scopeLost = true;
+      if (alive() && completed - startRound >= rounds && !scopeLost) {
         const b = brain();
         if (scope !== undefined) finished = b !== null;
         else if (b && (await this.takeaway(b, ctx))) {
@@ -212,9 +222,11 @@ export class AgentRunner {
     }
 
     if (finished) {
-      const on = scope === undefined ? '' : ` on ${brain()?.nodes.find((n) => n.id === scope)?.name ?? 'the node'}`;
+      const on = scope === undefined ? '' : ` on ${brain()?.nodes.find((n) => n.id === scope)?.name ?? scopeName ?? 'the node'}`;
       this.emit('status', `Done · ${rounds} rounds${on}`);
       this.emit('finished');
+    } else if (scopeLost && !failed && brain() !== null) {
+      this.emit('status', scopeName ? `Stopped: “${scopeName}” was deleted.` : 'Stopped: the node was removed.');
     } else if (!failed) {
       this.emit('status', this.paused && brain() !== null && completed > startRound ? `Paused after round ${completed}` : '');
     }

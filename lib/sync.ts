@@ -87,14 +87,23 @@ export async function switchUser(me: MeResponse): Promise<void> {
   else store().setStatus(EMPTY_STATUS);
 }
 
-export async function createBrain(title: string, summary: string, nodes: IdeaNode[], links: CrossLink[] = []): Promise<Brain | null> {
+/** Bumped by every open, create, delete of the open brain and session reset; pass it to `createBrain` as `since`. */
+export const openEpoch = (): number => selectToken;
+
+/**
+ * Saves a new brain, lists it and opens it, unless the user opened, created or deleted a brain meanwhile: since this
+ * call, or since `opts.since` (an `openEpoch()` taken earlier, e.g. before the LLM mapped the idea). Resolves the saved
+ * brain (opened or not), or null when the save failed.
+ */
+export async function createBrain(title: string, summary: string, nodes: IdeaNode[], links: CrossLink[] = [], opts: { since?: number } = {}): Promise<Brain | null> {
+  const stale = opts.since !== undefined && opts.since !== selectToken;
   const token = ++selectToken;
   store().setRun({ active: false, paused: true });
   let created: Brain | null = null;
   await send('Create brain', () => api.createBrain({ title, summary, nodes, links }), (brain) => {
     created = brain;
     useStore.setState((s) => ({ brains: [toRow(brain), ...s.brains.filter((r) => r.id !== brain.id)] }));
-    if (token === selectToken) store().openBrain(brain);
+    if (token === selectToken && !stale) store().openBrain(brain);
   });
   return created;
 }
@@ -170,17 +179,6 @@ export async function deleteSubtree(nodeId: string): Promise<void> {
   const sel = store().selected;
   if (sel !== null && doomed.has(sel)) useStore.setState({ selected: null });
   await send('Delete node', () => api.deleteNode(brain.id, nodeId));
-}
-
-/** Resolves false when the save failed (nothing to add counts as success). */
-export async function addChildren(nodes: IdeaNode[]): Promise<boolean> {
-  const brain = store().brain;
-  if (!brain) return false;
-  const have = new Set(brain.nodes.map((n) => n.id));
-  const fresh = nodes.filter((n) => !have.has(n.id) && have.add(n.id));
-  if (fresh.length === 0) return true;
-  store().patchBrain((b) => ({ ...b, nodes: [...b.nodes, ...fresh] }));
-  return send('Add ideas', () => api.addNodes(brain.id, fresh));
 }
 
 const linkKey = (l: { a: string; b: string }): string => `${l.a}~${l.b}`;

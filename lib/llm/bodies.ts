@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CrossLinkSchema, IdeaNodeSchema } from '@/lib/brains/schemas';
+import { FOCUS_MAX, cleanFocus } from '@/lib/llm/prompts';
 
 const AgentId = z.enum(['researcher', 'builder', 'customer', 'skeptic', 'strategist']);
 const Idea = z.object({ title: z.string().min(1).max(80), summary: z.string().max(400) });
@@ -25,8 +26,8 @@ export const AgentRoundBody = z.object({
   links: Links,
   target: IdeaNodeSchema,
   nodes: Nodes,
-  /** The user's note for a scoped run ("Expand with agents" with text in the input). */
-  focus: z.string().max(300).optional(),
+  /** The user's note for a scoped run ("Expand with agents" with text in the input); cleaned to one line (see `cleanFocus`). */
+  focus: z.string().max(FOCUS_MAX).optional().transform(cleanFocus),
 });
 
 export const TakeawayBody = z.object({ idea: Idea, mapLines: MapLines, links: Links, nodes: Nodes.min(1) });

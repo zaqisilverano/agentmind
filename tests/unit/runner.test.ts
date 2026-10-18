@@ -361,10 +361,42 @@ describe('AgentRunner', () => {
         const doomed = subtreeIds(h.brain.nodes, 'b2');
         h.brain.nodes = h.brain.nodes.filter((n) => !doomed.has(n.id));
       };
+      const name = h.brain.nodes.find((n) => n.id === 'b2')!.name;
       await runner.start('brain-1', 3, { scope: 'b2' });
       expect(h.rounds).toHaveLength(1);
       expect(h.emitted).not.toContain('finished');
+      expect(h.emitted.filter((e) => e.startsWith('status:')).at(-1)).toBe(`status:Stopped: “${name}” was deleted.`);
       expect(types(h.events).at(-1)).toBe('done');
+    });
+
+    it('a scope node deleted during the last round does not finish', async () => {
+      const { h, runner } = setup();
+      const name = h.brain.nodes.find((n) => n.id === 'b2')!.name;
+      h.onApplied = () => {
+        const doomed = subtreeIds(h.brain.nodes, 'b2');
+        h.brain.nodes = h.brain.nodes.filter((n) => !doomed.has(n.id));
+      };
+      await runner.start('brain-1', 1, { scope: 'b2' });
+      expect(h.emitted).not.toContain('finished');
+      expect(h.emitted.filter((e) => e.startsWith('status:')).at(-1)).toBe(`status:Stopped: “${name}” was deleted.`);
+    });
+
+    it('a scope node that is unknown from the start: "the node was removed"', async () => {
+      const { h, runner } = setup();
+      let calls = 0;
+      h.onAgentRound = () => { calls += 1; };
+      await runner.start('brain-1', 2, { scope: 'nope' });
+      expect(calls).toBe(0);
+      expect(h.emitted).not.toContain('finished');
+      expect(h.emitted.filter((e) => e.startsWith('status:')).at(-1)).toBe('status:Stopped: the node was removed.');
+    });
+
+    it('cleans the focus note to one line', async () => {
+      const { h, runner } = setup();
+      const focus: (string | undefined)[] = [];
+      h.onAgentRound = (b) => { focus.push(b.focus); };
+      await runner.start('brain-1', 1, { scope: 'b2', focus: '\n\tpricing\n\nfor\u0007 students\r\n' });
+      expect(focus).toEqual(['pricing for students']);
     });
   });
 

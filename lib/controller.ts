@@ -8,6 +8,9 @@ import { applyRound, setTakeaway } from '@/lib/sync';
 /** The API calls the UI makes outside the sync layer: loading the user, and the map, agent-round and takeaway LLM routes. */
 export type ControllerApi = Pick<ApiClient, 'me' | 'llm'>;
 
+/** `brainId`: run only if this is the open brain. `scope`/`focus`: a scoped run (see `RunOptions`). */
+export type StartOptions = RunOptions & { brainId?: string };
+
 let api: ControllerApi = apiClient;
 
 /** Injects the API (dev pages and tests). Omitted resets to the real client. */
@@ -20,10 +23,10 @@ export const controllerApi = (): ControllerApi => api;
 export interface Controller {
   /**
    * Starts a run of `settings.rounds` rounds on the open brain; with `scope`, a scoped run on that node's subtree (with
-   * the optional `focus` note). No-op without a brain, with a scope node that is not in it, or while the last run is
-   * still winding down.
+   * the optional `focus` note). No-op without a brain, when the open brain is not `brainId`, with a scope node that is
+   * not in it, or while the last run is still winding down.
    */
-  startRun: (opts?: RunOptions) => void;
+  startRun: (opts?: StartOptions) => void;
   /** Stops the run after the current step. */
   pause: () => void;
   /** True while the runner's loop is still going, including the wind-down after `pause()`. */
@@ -111,7 +114,7 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
     startRun(opts = {}) {
       const s = store();
       const brain = s.brain;
-      if (!brain) return;
+      if (!brain || (opts.brainId !== undefined && brain.id !== opts.brainId)) return;
       const scope = opts.scope ?? null;
       if (scope !== null && !brain.nodes.some((n) => n.id === scope)) return;
       const r = ensure();

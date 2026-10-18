@@ -8,16 +8,21 @@ import { TwoStepDelete } from '@/components/ui/TwoStepDelete';
 
 export const pad3 = (n: number) => String(n).padStart(3, '0');
 
+/** True while a typed idea is being mapped into a new brain: switching, creating or deleting brains waits until it is done. */
+export const useMapping = (): boolean => useStore(s => s.ui.busy === 'map');
+
 /**
  * The saved-brain list (number, title, node count), "+ New second brain" and a two-step "Delete this brain" for the
- * open brain. `close` dismisses the surrounding menu or sheet before the action runs.
+ * open brain, all disabled while an idea is being mapped. `close` dismisses the surrounding menu or sheet before the action runs.
  */
 export function BrainMenu({ close }: { close: () => void }) {
   const brains = useStore(s => s.brains);
   const currentId = useStore(s => s.brain?.id ?? null);
   const select = useStore(s => s.select);
+  const mapping = useMapping();
 
   const open = (id: string) => {
+    if (useStore.getState().ui.busy === 'map') return;
     close();
     if (id !== currentId) void selectBrain(id);
   };
@@ -29,6 +34,7 @@ export function BrainMenu({ close }: { close: () => void }) {
   };
 
   const remove = (id: string) => {
+    if (useStore.getState().ui.busy === 'map') return;
     close();
     void deleteBrain(id);
   };
@@ -40,8 +46,9 @@ export function BrainMenu({ close }: { close: () => void }) {
           key={b.id}
           type="button"
           aria-current={b.id === currentId}
+          disabled={mapping}
           onClick={() => open(b.id)}
-          className={`flex cursor-pointer items-baseline gap-[10px] border-b border-rule2 px-[10px] py-[9px] text-left font-mono text-ink hover:text-accent ${b.id === currentId ? 'bg-bg' : 'bg-transparent'}`}
+          className={`flex cursor-pointer disabled:cursor-default disabled:opacity-50 items-baseline gap-[10px] border-b border-rule2 px-[10px] py-[9px] text-left font-mono text-ink hover:text-accent ${b.id === currentId ? 'bg-bg' : 'bg-transparent'}`}
         >
           <span className="text-[10px] text-muted">{pad3(b.number)}</span>
           <span className="flex-1 font-serif text-[19px] leading-[1.1]">{b.title}</span>
@@ -50,8 +57,9 @@ export function BrainMenu({ close }: { close: () => void }) {
       ))}
       <button
         type="button"
+        disabled={mapping}
         onClick={newBrain}
-        className="cursor-pointer p-[10px] text-left font-mono text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-ink hover:bg-ink hover:text-panel"
+        className="cursor-pointer disabled:cursor-default disabled:opacity-50 p-[10px] text-left font-mono text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-ink hover:bg-ink hover:text-panel"
       >
         + New second brain
       </button>
@@ -62,6 +70,7 @@ export function BrainMenu({ close }: { close: () => void }) {
           confirmLabel="Confirm delete?"
           title="Delete this brain and everything in it"
           onConfirm={() => remove(currentId)}
+          disabled={mapping}
           className="border-t border-rule2 text-left"
         />
       )}
@@ -77,6 +86,7 @@ export function BrainDropdown() {
   const number = useStore(s => s.brain?.number ?? null);
   const toggleLeft = useStore(s => s.toggleLeft);
   const setOpenDropdown = useStore(s => s.setOpenDropdown);
+  const mapping = useMapping();
 
   const hide = () => {
     if (useStore.getState().ui.openDropdown === 'brain') setOpenDropdown(null);
@@ -92,6 +102,8 @@ export function BrainDropdown() {
         className="flex min-w-0 flex-1"
         menuGap={4}
         menuShadow={3}
+        disabled={mapping}
+        title={mapping ? 'Mapping your idea…' : undefined}
         menuClassName="right-0 max-h-[300px] overflow-y-auto"
         triggerClassName="flex min-w-0 flex-1 items-center gap-[10px] border border-ink bg-panel px-[10px] py-[9px] text-left font-mono text-[10.5px] uppercase leading-[normal] tracking-[0.14em] text-ink"
         label={isOpen => (

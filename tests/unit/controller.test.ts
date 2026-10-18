@@ -7,7 +7,7 @@ import { mapIdea, pathNames } from '@/lib/grow';
 import { expandWithAgents, runAction, startFromInput } from '@/lib/run';
 import { fallback } from '@/lib/llm/fallback';
 import { initialState, useStore } from '@/lib/store';
-import { configureSync } from '@/lib/sync';
+import { configureSync, selectBrain } from '@/lib/sync';
 import { fixtureBrain } from '../fixtures/brain';
 
 const META = { source: 'fallback' as const, attempts: 0 };
@@ -38,6 +38,7 @@ beforeEach(() => {
     api: {
       applyRound: echo, setTakeaway: echo, addNodes: echo, patchNode: echo,
       createBrain: vi.fn(async (body) => ({ ...brain, id: 'new', title: body.title, nodes: body.nodes as IdeaNode[], links: [], log: [], synth: null, round: 0 })),
+      getBrain: vi.fn(async (id: string) => ({ ...structuredClone(brain), id })),
     } as unknown as ApiClient,
   });
   useStore.setState({ ...initialState, brain, brains: [] });
@@ -48,13 +49,13 @@ describe('grow', () => {
     expect(pathNames(brain.nodes, 'b2c1')).toEqual([brain.nodes[0].name, brain.nodes.find(n => n.id === 'b2')!.name, brain.nodes.find(n => n.id === 'b2c1')!.name]);
   });
   it('mapIdea creates and opens a new brain', async () => {
-    expect(await mapIdea('a tool library for renters')).toBe(true);
+    expect(await mapIdea('a tool library for renters')).toMatchObject({ id: 'new', opened: true });
     const s = useStore.getState();
     expect(s.brain!.id).toBe('new');
     expect(s.run.status).toBe(`${s.brain!.nodes.length} nodes · offline fallback`);
   });
   it('mapIdea refuses a too-short idea without calling the LLM', async () => {
-    expect(await mapIdea('ab')).toBe(false);
+    expect(await mapIdea('ab')).toBeNull();
     expect(llm.llm.map).not.toHaveBeenCalled();
   });
 });
@@ -104,6 +105,51 @@ describe('startFromInput', () => {
     expect(s.run.active).toBe(false);
     expect(s.ui.busy).toBeNull();
     expect(llm.llm.agentRound).not.toHaveBeenCalled();
+  });
+
+  it.each(['the LLM map call', 'the create-brain save'])('a brain switch during %s: the new brain is saved but not opened, and no run starts', async (during) => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const create = vi.fn(async (body: { title: string; nodes: unknown[] }) => {
+      await gate;
+      return { ...brain, id: 'new', title: body.title, nodes: body.nodes as IdeaNode[], links: [], log: [], synth: null, round: 0 };
+    });
+    if (during === 'the LLM map call') {
+      vi.mocked(llm.llm.map).mockImplementationOnce(async (b) => {
+        await gate;
+        return { data: fallback.map(b.idea) as never, meta: META };
+      });
+    } else {
+      configureSync({
+        api: {
+          applyRound: echo, setTakeaway: echo,
+          getBrain: vi.fn(async (id: string) => ({ ...structuredClone(brain), id })),
+          createBrain: create,
+        } as unknown as ApiClient,
+      });
+    }
+    const pending = startFromInput('a tool library for renters');
+    await vi.waitFor(() => expect(useStore.getState().ui.busy).toBe('map'));
+    if (during !== 'the LLM map call') await vi.waitFor(() => expect(create).toHaveBeenCalled());
+    await selectBrain('other');
+    expect(useStore.getState().brain!.id).toBe('other');
+    const other = structuredClone(useStore.getState().brain);
+    release();
+    expect(await pending).toBe(true); // the brain exists now, so the input clears
+    const s = useStore.getState();
+    expect(s.brain).toEqual(other);
+    expect(s.brains.some((r) => r.id === 'new')).toBe(true);
+    expect(s.run).toMatchObject({ active: false, scope: null });
+    expect(s.run.status).toMatch(/^Mapped “.+”\. Open it and press Run agents\.$/);
+    expect(llm.llm.agentRound).not.toHaveBeenCalled();
+    expect(llm.llm.takeaway).not.toHaveBeenCalled();
+    expect(c.running).toBe(false);
+  });
+
+  it('startRun with a brainId that is not the open brain does nothing', () => {
+    c.startRun({ brainId: 'someone-else' });
+    expect(useStore.getState().run.active).toBe(false);
+    expect(c.running).toBe(false);
   });
 
   it('empty input with an open brain: a full run on it', async () => {

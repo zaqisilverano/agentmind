@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { selectIsEmpty, useStore, type SheetId } from '@/lib/store';
-import { pad3 } from '@/components/panels/BrainDropdown';
+import { pad3, useMapping } from '@/components/panels/BrainDropdown';
 import { StatusLine, useRunInput, type RunInput } from '@/components/panels/InputBar';
 import { EMPTY_TITLE } from '@/components/panels/LeftPanel';
 import { AgentsSheet, BrainSheet, KeySheet, LogSheet, MapSheet, NodeSheet, SettingsSheet } from '@/components/panels/MobileSheets';
@@ -19,7 +19,13 @@ function TopBar() {
   const sheet = useStore(s => s.ui.sheet);
   const setSheet = useStore(s => s.setSheet);
   const setFocus = useStore(s => s.setFocus);
+  const mapping = useMapping();
   const toggle = (id: SheetId) => setSheet(sheet === id ? null : id);
+
+  // No switching brains while an idea is being mapped into a new one.
+  useEffect(() => {
+    if (mapping && useStore.getState().ui.sheet === 'brain') setSheet(null);
+  }, [mapping, setSheet]);
 
   return (
     <div className="pointer-events-auto flex gap-2">
@@ -28,8 +34,9 @@ function TopBar() {
         aria-haspopup="dialog"
         aria-expanded={sheet === 'brain'}
         data-sheet-trigger="brain"
+        disabled={mapping}
         onClick={() => toggle('brain')}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 border border-ink bg-panel px-3 pt-[7px] pb-[6px] text-left text-ink shadow-[var(--shadow3)]"
+        className="flex min-w-0 flex-1 cursor-pointer disabled:cursor-default disabled:opacity-60 items-center gap-2 border border-ink bg-panel px-3 pt-[7px] pb-[6px] text-left text-ink shadow-[var(--shadow3)]"
       >
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
           <span className="font-mono text-[9.5px] uppercase leading-[normal] tracking-[0.14em]">

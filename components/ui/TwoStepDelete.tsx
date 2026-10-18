@@ -9,6 +9,7 @@ export interface TwoStepDeleteProps {
   title?: string;
   /** Borders and layout from the caller; the button supplies type, colour and padding. */
   className?: string;
+  disabled?: boolean;
 }
 
 const RESET_MS = 3000;
@@ -17,7 +18,7 @@ const RESET_MS = 3000;
  * Delete button that asks once: the first click arms it ("Confirm?"), the second calls `onConfirm`.
  * It disarms itself after 3 s. Give it a `key` tied to the target so switching targets disarms it too.
  */
-export function TwoStepDelete({ onConfirm, label = 'Delete', confirmLabel = 'Confirm?', title, className = '' }: TwoStepDeleteProps) {
+export function TwoStepDelete({ onConfirm, label = 'Delete', confirmLabel = 'Confirm?', title, className = '', disabled = false }: TwoStepDeleteProps) {
   const [armed, setArmed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,8 +41,9 @@ export function TwoStepDelete({ onConfirm, label = 'Delete', confirmLabel = 'Con
     <button
       type="button"
       title={title}
+      disabled={disabled}
       onClick={click}
-      className={`cursor-pointer px-4 py-[13px] font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] hover:bg-accent hover:text-on-accent ${tone} ${className}`}
+      className={`cursor-pointer disabled:cursor-default disabled:opacity-50 px-4 py-[13px] font-mono text-[11px] uppercase leading-[normal] tracking-[0.14em] hover:bg-accent hover:text-on-accent ${tone} ${className}`}
     >
       {armed ? confirmLabel : label}
     </button>

@@ -119,15 +119,7 @@ describe('deleteSubtree', () => {
   });
 });
 
-describe('addChildren / addLinks', () => {
-  it('appends new nodes only, and posts only the new ones', async () => {
-    const existing = brain.nodes[1];
-    const fresh = { ...existing, id: 'b1c0xnew0', parent: 'b1', depth: 2 };
-    await sync.addChildren([existing, fresh]);
-    expect(useStore.getState().brain!.nodes.filter((n) => n.id === existing.id)).toHaveLength(1);
-    expect(useStore.getState().brain!.nodes.some((n) => n.id === 'b1c0xnew0')).toBe(true);
-    expect(api.addNodes).toHaveBeenCalledWith(brain.id, [fresh]);
-  });
+describe('addLinks', () => {
   it('dedupes links on a~b', async () => {
     const dupe = { a: 'b0c0', b: 'b2c1', why: 'again', by: 'skeptic' as const };
     const fresh = { a: 'b1', b: 'b3', why: 'new', by: 'skeptic' as const };

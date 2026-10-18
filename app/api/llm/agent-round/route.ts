@@ -13,7 +13,7 @@ export const POST = llmRoute(async (req) => {
   const { data, meta } = await generate(
     AgentRoundReplySchema,
     PROMPTS.agentRound.system(agent),
-    PROMPTS.agentRound.user({ idea: body.idea, mapLines: body.mapLines, links: body.links, target: body.target, critic: agent.critic, focus: body.focus?.trim() || undefined }),
+    PROMPTS.agentRound.user({ idea: body.idea, mapLines: body.mapLines, links: body.links, target: body.target, critic: agent.critic, focus: body.focus }),
     () => fallback.agentRound(body.agent, body.target, body.nodes),
   );
   const ids = new Set(body.nodes.map((n) => n.id));
