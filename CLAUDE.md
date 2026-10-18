@@ -22,3 +22,7 @@ engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, 
 
 ## Git
 Plain commit messages. No Co-Authored-By trailer, no "generated with" line. Never commit .env files.
+
+## Agent instruction files
+
+`CLAUDE.md` and `AGENTS.md` hold the same rules. Edit both together; `tests/unit/agents-md.test.ts` fails if they differ.
