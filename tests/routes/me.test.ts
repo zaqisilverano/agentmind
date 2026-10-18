@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { makeTestDb } from './_harness';
 import { brains, users } from '@/db/schema';
 
@@ -123,3 +123,34 @@ describe('GET /api/health', () => {
     }
   });
 });
+
+describe('GET /api/me provider', () => {
+  // getEnv() caches the environment, so each case loads the route (and a test db) in a fresh module graph.
+  const meWith = async (env: Record<string, string>) => {
+    const saved = { ...process.env };
+    Object.assign(process.env, env);
+    vi.resetModules();
+    try {
+      await (await import('./_harness')).makeTestDb();
+      const { GET: get } = await import('@/app/api/me/route');
+      return (await (await get(new Request('http://t/api/me'))).json()).data;
+    } finally {
+      process.env = saved;
+      vi.resetModules();
+    }
+  };
+
+  it('without a key: not configured, "Offline fallback"', async () => {
+    const data = await meWith({ LLM_API_KEY: '', LLM_MODEL: 'IFM/K2-Horizon-375B-A23B' });
+    expect(data.provider).toEqual({ configured: false, label: 'Offline fallback' });
+  });
+
+  it('with a key: configured, the model label, and never the key or base URL', async () => {
+    const data = await meWith({ LLM_API_KEY: 'placeholder-not-a-real-key', LLM_MODEL: 'IFM/K2-Horizon-375B-A23B', LLM_BASE_URL: 'https://llm.example.test/v1' });
+    expect(data.provider).toEqual({ configured: true, label: 'K2 Horizon 375B' });
+    const raw = JSON.stringify(data);
+    expect(raw).not.toContain('placeholder-not-a-real-key');
+    expect(raw).not.toContain('llm.example.test');
+  });
+});
+

@@ -83,6 +83,7 @@ const controllerApi: ControllerApi = {
   me: async () => ({
     user: { id: '7f3c9a12-4b5e-4d6f-8a90-1b2c3d4e5f60' },
     brains: Object.values(BRAINS).map(b => ({ id: b.id, number: b.number, title: b.title, nodeCount: b.nodes.length, updatedAt: b.updatedAt })),
+    provider: { configured: false, label: 'Offline fallback' },
   }),
   llm: {
     map: (body) => llm(fallback.map(body.idea) as MapReplyOut),

@@ -171,7 +171,8 @@ test.describe.serial('agentmind on a phone', () => {
     await expect(settings.getByRole('button', { name: 'Stars', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(settings.getByRole('button', { name: 'Atlas', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(settings.getByText('Your ID')).toBeVisible();
-    await expect(settings.getByText('offline fallback')).toBeVisible();
+    await expect(settings.getByTestId('provider-status')).toHaveText('Offline fallback');
+    await expect(settings.getByTestId('provider-status')).toHaveAttribute('data-tone', 'off');
     await shot(page, 'settings');
 
     await settings.getByRole('button', { name: 'Orbit', exact: true }).click();

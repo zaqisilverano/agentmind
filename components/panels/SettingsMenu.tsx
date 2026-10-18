@@ -6,8 +6,8 @@ import { download, slugify } from '@/lib/download';
 import { toJson } from '@/lib/export/json';
 import { downloadHtml3d } from '@/lib/export/html3dClient';
 import { toMarkdown } from '@/lib/export/markdown';
-import { providerText } from '@/lib/grow';
 import { useStore, type Rounds } from '@/lib/store';
+import { ProviderStatus } from './ProviderStatus';
 
 export const ROUNDS: Rounds[] = [5, 10, 20];
 const DL = 'flex-1 cursor-pointer border border-ink bg-panel px-2 py-[9px] font-mono text-[10.5px] uppercase leading-[normal] tracking-[0.12em] text-ink hover:bg-ink hover:text-panel disabled:cursor-default disabled:opacity-40 disabled:pointer-events-none';
@@ -40,11 +40,10 @@ export function useDownloads() {
   };
 }
 
-/** Settings dropdown body: rounds per run, brain downloads, and which LLM answered last. */
+/** Settings dropdown body: rounds per run, brain downloads, and the configured LLM provider with its status. */
 export function SettingsMenu() {
   const rounds = useStore(s => s.settings.rounds);
   const setRounds = useStore(s => s.setRounds);
-  const provider = useStore(s => s.provider);
   const { hasBrain, saveMarkdown, saveJson, saveHtml3d } = useDownloads();
 
   return (
@@ -75,7 +74,7 @@ export function SettingsMenu() {
       </div>
       <div className="flex items-baseline gap-3 px-[14px] py-3">
         <Heading>Provider</Heading>
-        <div className="min-w-0 flex-1 truncate text-right text-[11px]" title={providerText(provider)}>{providerText(provider)}</div>
+        <ProviderStatus />
       </div>
     </>
   );

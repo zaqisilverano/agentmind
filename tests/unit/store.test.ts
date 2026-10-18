@@ -3,7 +3,10 @@ import type { Brain } from '@/engine/types';
 import type { ApiClient } from '@/lib/apiClient';
 import { initialState, selectIsEmpty, useStore } from '@/lib/store';
 import * as sync from '@/lib/sync';
+import { providerStatus } from '@/lib/providerStatus';
 import { fixtureBrain } from '../fixtures/brain';
+
+const OFFLINE = { configured: false, label: 'Offline fallback' };
 
 type Fake = { [K in keyof ApiClient]: K extends 'llm' ? ApiClient['llm'] : ReturnType<typeof vi.fn> };
 
@@ -298,7 +301,7 @@ describe('switchUser', () => {
     useStore.getState().setRun({ active: true, paused: false, phase: 'diverge', agent: 'builder' });
     useStore.getState().setSyncError({ label: 'Edit node', retry: async () => undefined });
     const sel = sync.selectBrain('old');
-    const sw = sync.switchUser({ user: { id: 'u2' }, brains: [row('new')] });
+    const sw = sync.switchUser({ user: { id: 'u2' }, brains: [row('new')], provider: OFFLINE });
     const mid = useStore.getState();
     expect([mid.brain, mid.selected, mid.syncError, mid.user?.id]).toEqual([null, null, null, 'u2']);
     expect(mid.run).toMatchObject({ active: false, paused: true, phase: null, agent: null });
@@ -316,7 +319,7 @@ describe('switchUser', () => {
     api.getBrain.mockReturnValueOnce(new Promise<Brain>((r) => (release = r)));
     useStore.getState().setRun({ active: true, paused: false });
     const sel = sync.selectBrain('old');
-    await sync.switchUser({ user: { id: 'u2' }, brains: [] });
+    await sync.switchUser({ user: { id: 'u2' }, brains: [], provider: OFFLINE });
     release(old);
     await sel;
     const s = useStore.getState();
@@ -332,7 +335,7 @@ describe('selectIsEmpty', () => {
     useStore.setState({ ...initialState });
     expect(useStore.getState().ui.boot).toBe('pending');
     expect(selectIsEmpty(useStore.getState())).toBe(false);
-    useStore.getState().hydrate({ user: { id: 'u' }, brains: [] });
+    useStore.getState().hydrate({ user: { id: 'u' }, brains: [], provider: OFFLINE });
     expect(selectIsEmpty(useStore.getState())).toBe(false);
     useStore.getState().setBoot('ready');
     expect(selectIsEmpty(useStore.getState())).toBe(true);
@@ -382,5 +385,28 @@ describe('ui.sheet', () => {
     expect(s.run.active).toBe(true);
     expect(s.run.paused).toBe(false);
     expect(s.selected).toBe('b0');
+  });
+});
+
+describe('provider and lastSource', () => {
+  const K2 = { configured: true, label: 'K2 Horizon 375B' };
+  beforeEach(() => useStore.setState({ ...initialState }));
+
+  it('hydrate stores the configured provider; an LLM response only sets lastSource and keeps the label', () => {
+    expect([useStore.getState().provider, useStore.getState().lastSource]).toEqual([null, null]);
+    useStore.getState().hydrate({ user: { id: 'u' }, brains: [], provider: K2 });
+    expect(useStore.getState().provider).toEqual(K2);
+    useStore.getState().setLastSource('fallback');
+    expect([useStore.getState().provider, useStore.getState().lastSource]).toEqual([K2, 'fallback']);
+    useStore.getState().setLastSource('model');
+    expect([useStore.getState().provider, useStore.getState().lastSource]).toEqual([K2, 'model']);
+  });
+
+  it('providerStatus: green when configured, amber with a note after a fallback, grey without a key', () => {
+    expect(providerStatus(null, null)).toEqual({ tone: 'unknown', label: '—' });
+    expect(providerStatus(K2, null)).toEqual({ tone: 'ok', label: 'K2 Horizon 375B' });
+    expect(providerStatus(K2, 'model')).toEqual({ tone: 'ok', label: 'K2 Horizon 375B' });
+    expect(providerStatus(K2, 'fallback')).toEqual({ tone: 'degraded', label: 'K2 Horizon 375B', note: 'last call used the offline fallback' });
+    expect(providerStatus(OFFLINE, 'fallback')).toEqual({ tone: 'off', label: 'Offline fallback' });
   });
 });

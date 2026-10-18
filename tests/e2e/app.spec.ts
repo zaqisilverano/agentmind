@@ -115,6 +115,12 @@ test.describe.serial('agentmind smoke', () => {
     await expect(tab).toHaveText(`» ${EMPTY_TITLE}`);
     await tab.click();
     await expect(leftPanel).toBeVisible();
+    // The Provider row is filled from /api/me before any LLM call; e2e has no key, so it is the grey offline fallback.
+    await ui(page).toolbar.getByRole('button', { name: /^Settings/ }).click();
+    const provider = ui(page).toolbar.getByTestId('provider-status');
+    await expect(provider).toHaveText('Offline fallback');
+    await expect(provider).toHaveAttribute('data-tone', 'off');
+    await page.keyboard.press('Escape');
   });
 
   test('2. typing an idea and pressing Run agents maps a new brain and runs the agents on it', async () => {

@@ -70,7 +70,7 @@ export function createController(scene: () => AtlasScene | null, overrides: Part
       getBrain: () => store().brain,
       scene: (ev) => scene()?.agent(ev) ?? Promise.resolve(),
       ink: () => THEMES[store().theme].ink,
-      onMeta: (meta) => store().setProvider(meta),
+      onMeta: (meta) => store().setLastSource(meta.source),
       ...overrides,
     });
     offs.push(

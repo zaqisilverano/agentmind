@@ -16,7 +16,9 @@ export class ApiError extends Error {
 }
 
 export interface BrainListRow { id: string; number: number; title: string; nodeCount: number; updatedAt: string }
-export interface MeResponse { user: { id: string; createdAt?: string }; brains: BrainListRow[] }
+/** The configured LLM: `configured` is false without an API key (offline fallback); `label` is for display only. */
+export interface ProviderInfo { configured: boolean; label: string }
+export interface MeResponse { user: { id: string; createdAt?: string }; brains: BrainListRow[]; provider: ProviderInfo }
 export interface LlmMeta { source: 'model' | 'fallback'; model?: string; ms?: number; attempts: number; error?: string }
 export interface LlmResult<T> { data: T; meta: LlmMeta }
 

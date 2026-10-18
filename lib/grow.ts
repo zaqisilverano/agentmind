@@ -4,13 +4,15 @@ import { track } from '@/lib/analytics';
 import type { LlmMeta } from '@/lib/apiClient';
 import { controllerApi, getController } from '@/lib/controller';
 import { fromBranches } from '@/lib/ids';
-import { useStore, type Provider } from '@/lib/store';
+import { providerLabel } from '@/lib/llm/providerLabel';
+import { useStore } from '@/lib/store';
 import { createBrain, openEpoch } from '@/lib/sync';
 
 const store = () => useStore.getState();
 
-/** "offline fallback" or the model name, for status lines and the Settings menu. */
-export const providerText = (p: Provider | LlmMeta | null): string => (!p ? '—' : p.source === 'fallback' ? 'offline fallback' : p.model ?? '—');
+/** Who answered an LLM call, for the status line: "offline fallback", or the model's display label ("K2 Horizon 375B"). */
+export const providerText = (meta: LlmMeta): string =>
+  meta.source === 'fallback' ? 'offline fallback' : meta.model ? providerLabel(meta.model, true) : store().provider?.label ?? 'model';
 
 /** A run is going, or still winding down after Pause (a phase is still set): no new run or map may start yet. */
 export const runBusy = (): boolean => {
@@ -50,7 +52,7 @@ export async function mapIdea(text: string): Promise<Mapped | null> {
   store().setStatus('Mapping your idea…');
   try {
     const { data, meta } = await controllerApi().llm.map({ idea: idea.slice(0, 2000) });
-    store().setProvider(meta);
+    store().setLastSource(meta.source);
     const { title, summary, nodes } = fromBranches(data, THEMES[store().theme].ink);
     const brain = await createBrain(title, summary, nodes, [], { since });
     if (!brain) {

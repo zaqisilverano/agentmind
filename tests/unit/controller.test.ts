@@ -55,6 +55,15 @@ describe('grow', () => {
     expect(s.brain!.id).toBe('new');
     expect(s.run.status).toBe(`${s.brain!.nodes.length} nodes · offline fallback`);
   });
+  it('mapIdea prints the model label in the status line, not the raw model id, and records lastSource', async () => {
+    vi.mocked(llm.llm.map).mockImplementationOnce(async (b) => ({ data: fallback.map(b.idea) as never, meta: { source: 'model', model: 'IFM/K2-Horizon-375B-A23B', attempts: 1 } }));
+    useStore.setState({ provider: { configured: true, label: 'K2 Horizon 375B' } });
+    await mapIdea('a tool library for renters');
+    const s = useStore.getState();
+    expect(s.run.status).toBe(`${s.brain!.nodes.length} nodes · K2 Horizon 375B`);
+    expect(s.lastSource).toBe('model');
+    expect(s.provider).toEqual({ configured: true, label: 'K2 Horizon 375B' });
+  });
   it('mapIdea refuses a too-short idea without calling the LLM', async () => {
     expect(await mapIdea('ab')).toBeNull();
     expect(llm.llm.map).not.toHaveBeenCalled();

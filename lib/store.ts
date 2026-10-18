@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AgentId, Brain, Mode, ThemeId } from '@/engine/types';
-import type { BrainListRow, MeResponse } from '@/lib/apiClient';
+import type { BrainListRow, MeResponse, ProviderInfo } from '@/lib/apiClient';
 
 export type Phase = 'plan' | 'diverge' | 'connect' | 'takeaway';
 export type Rounds = 5 | 10 | 20;
@@ -14,7 +14,8 @@ export type Boot = 'pending' | 'ready' | 'failed';
 /** The bottom sheet open in the mobile layout; one at a time. */
 export type SheetId = 'brain' | 'settings' | 'map' | 'agents' | 'log' | 'key' | 'node';
 export interface UiState { leftHidden: boolean; focus: boolean; takeawayOpen: boolean; logOpen: boolean; openDropdown: string | null; showPath: boolean; busy: Busy; boot: Boot; sheet: SheetId | null }
-export interface Provider { source: 'model' | 'fallback'; model?: string }
+/** Which side answered the last LLM call: the configured model or the offline fallback. Null before the first call. */
+export type LlmSource = 'model' | 'fallback' | null;
 /** A failed save. `message` is the server's error text when it sent one (e.g. "this brain is full (300 nodes)"). */
 export interface SyncError { label: string; message?: string; retry: () => Promise<void> }
 
@@ -28,7 +29,9 @@ export interface State {
   settings: { rounds: Rounds };
   run: RunState;
   ui: UiState;
-  provider: Provider | null;
+  /** The configured LLM from `/api/me`; null until it answers. */
+  provider: ProviderInfo | null;
+  lastSource: LlmSource;
   syncError: SyncError | null;
 }
 
@@ -51,7 +54,8 @@ export interface Actions {
   setBoot: (boot: Boot) => void;
   setRun: (partial: Partial<RunState>) => void;
   setStatus: (text: string) => void;
-  setProvider: (meta: Provider) => void;
+  /** Records which side answered an LLM call; the provider label is left as it is. */
+  setLastSource: (source: 'model' | 'fallback') => void;
   setSyncError: (err: SyncError | null) => void;
   /** Low-level: replaces the current brain with `fn(brain)`. Used by sync; keeps the list row's title and node count in step. */
   patchBrain: (fn: (b: Brain) => Brain) => void;
@@ -68,12 +72,13 @@ export const initialState: State = {
   run: { active: false, paused: false, round: 0, total: 0, phase: null, agent: null, status: '', scope: null },
   ui: { leftHidden: false, focus: false, takeawayOpen: true, logOpen: true, openDropdown: null, showPath: true, busy: null, boot: 'pending', sheet: null },
   provider: null,
+  lastSource: null,
   syncError: null,
 };
 
 export const useStore = create<State & Actions>()((set) => ({
   ...initialState,
-  hydrate: (me) => set({ user: me.user, brains: me.brains }),
+  hydrate: (me) => set({ user: me.user, brains: me.brains, provider: me.provider }),
   openBrain: (brain) => set({ brain, selected: null }),
   select: (id) => set((s) => ({ selected: id !== null && s.brain?.nodes.some((n) => n.id === id) ? id : null })),
   setMode: (mode) => set({ mode }),
@@ -90,7 +95,7 @@ export const useStore = create<State & Actions>()((set) => ({
   setBoot: (boot) => set((s) => ({ ui: { ...s.ui, boot } })),
   setRun: (partial) => set((s) => ({ run: { ...s.run, ...partial } })),
   setStatus: (status) => set((s) => ({ run: { ...s.run, status } })),
-  setProvider: (meta) => set({ provider: meta.model === undefined ? { source: meta.source } : { source: meta.source, model: meta.model } }),
+  setLastSource: (lastSource) => set({ lastSource }),
   setSyncError: (syncError) => set({ syncError }),
   patchBrain: (fn) =>
     set((s) => {

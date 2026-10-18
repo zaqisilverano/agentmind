@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import type { Mode, ThemeId } from '@/engine/types';
 import { THEMES } from '@/engine/themes';
-import { providerText } from '@/lib/grow';
 import { selectIsEmpty, useStore } from '@/lib/store';
 import { Sheet } from '@/components/ui/Sheet';
 import { AgentLogEntries } from './AgentLog';
@@ -14,6 +13,7 @@ import { EMPTY_SUMMARY, EMPTY_TITLE } from './LeftPanel';
 import { Legend } from './Legend';
 import { NodeCardBody, NodeDot, nodeKindLabel } from './NodeCardBody';
 import { PhaseBar } from './PhaseBar';
+import { ProviderStatus } from './ProviderStatus';
 import { ROUNDS, useDownloads } from './SettingsMenu';
 import { ShowPathToggle, TakeawayDetails, TakeawayMark } from './TakeawayCard';
 
@@ -110,7 +110,6 @@ export function SettingsSheet() {
   const mode = useStore(s => s.mode);
   const theme = useStore(s => s.theme);
   const rounds = useStore(s => s.settings.rounds);
-  const provider = useStore(s => s.provider);
   const setMode = useStore(s => s.setMode);
   const setTheme = useStore(s => s.setTheme);
   const setRounds = useStore(s => s.setRounds);
@@ -157,7 +156,7 @@ export function SettingsSheet() {
         <IdentityLine />
         <div className="flex items-baseline gap-3">
           <div className={HEADING}>Provider</div>
-          <div className="min-w-0 flex-1 truncate text-right text-[11px]" title={providerText(provider)}>{providerText(provider)}</div>
+          <ProviderStatus />
         </div>
       </div>
     </Sheet>
