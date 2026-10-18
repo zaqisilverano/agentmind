@@ -2,6 +2,9 @@ import { THEMES } from '@/engine/themes';
 import type { Brain, Mode, ThemeId } from '@/engine/types';
 import { VIEWER_JS } from '@/lib/export/viewer3d';
 
+/** The agentmind mark as a data-URI favicon for exported pages (no external file needed). */
+const FAVICON = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='33' r='11' fill='%23F2A33A'/><circle cx='32' cy='7' r='6' fill='%231E7BFF'/><circle cx='56.5' cy='24.5' r='6' fill='%2300C46A'/><circle cx='47' cy='54' r='6' fill='%23FF6A00'/><circle cx='17' cy='54' r='6' fill='%23ECE7DA'/><circle cx='7.5' cy='24.5' r='6' fill='%238B5CF6'/></svg>";
+
 /** The three.js build the export loads from the CDN. A unit test fails when it drifts from node_modules/three. */
 export const THREE_VERSION = '0.186.1';
 
@@ -65,6 +68,7 @@ export function toHtml3d(brain: Brain, theme: ThemeId, mode: Mode, layoutJs: str
     '<!doctype html>',
     `<html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`,
     `<title>${esc(brain.title)}</title>`,
+    `<link rel="icon" href="${FAVICON}">`,
     '<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">',
     `<style>${css(t)}</style></head><body>`,
     '<div id="c"></div><div id="l"></div>',

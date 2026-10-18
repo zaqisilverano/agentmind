@@ -4,7 +4,7 @@
 
 <br><br>
 
-**[Quick start](#quick-start)** · **[Agents](#meet-the-agents)** · **[Configuration](#configuration)** · **[How it works](#how-it-works)** · **[Deployment](#deployment)** · **[Privacy](#privacy)**
+**[Try it live](https://agentmind.zaqi.build)** · **[Quick start](#quick-start)** · **[Agents](#meet-the-agents)** · **[Configuration](#configuration)** · **[How it works](#how-it-works)** · **[Deployment](#deployment)** · **[Privacy](#privacy)**
 
 <br>
 

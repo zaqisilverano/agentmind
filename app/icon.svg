@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .core { fill: #1B1A17 } .ink { fill: #141414 }
+    @media (prefers-color-scheme: dark) { .core { fill: #F2A33A } .ink { fill: #ECE7DA } }
+  </style>
+  <circle class="core" cx="32" cy="33" r="11"/>
+  <circle cx="32" cy="7" r="6" fill="#1E7BFF"/>
+  <circle cx="56.5" cy="24.5" r="6" fill="#00C46A"/>
+  <circle cx="47" cy="54" r="6" fill="#FF6A00"/>
+  <circle class="ink" cx="17" cy="54" r="6"/>
+  <circle cx="7.5" cy="24.5" r="6" fill="#8B5CF6"/>
+</svg>

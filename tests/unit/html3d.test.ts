@@ -107,4 +107,9 @@ describe('public/export/layout.js', () => {
     await expect(transform(viewer, { loader: 'js', format: 'esm' })).resolves.toBeDefined();
     await expect(transform(`${viewer}\nconst broken = ;`, { loader: 'js', format: 'esm' })).rejects.toThrow();
   });
+
+  it('ships the agentmind mark as an inline favicon', () => {
+    const html = toHtml3d(fixtureBrain(), 'atlas', 'constellation', 'window.AtlasLayout = {};');
+    expect(html).toMatch(/<link rel="icon" href="data:image\/svg\+xml,<svg [^"]*%23F2A33A[^"]*">/);
+  });
 });
