@@ -2,7 +2,7 @@ import type { AgentEvent, AgentId, Brain, CrossLink, IdeaNode, LogEntry, Takeawa
 import { agentForRound } from '@/lib/agents/roster';
 import { BRAIN_FULL_MESSAGE, MAX_NODES_PER_BRAIN } from '@/lib/brains/limits';
 import { makeKids } from '@/lib/agents/makeKids';
-import { pickTarget } from '@/lib/agents/pickTarget';
+import { pickTarget, subtreeIds } from '@/lib/agents/pickTarget';
 import type { apiClient, LlmMeta } from '@/lib/apiClient';
 import { mapLines } from '@/lib/llm/prompts';
 import type { RoundInput } from '@/lib/sync';
@@ -32,6 +32,9 @@ export interface RunnerDeps {
   now?: () => number;
 }
 
+/** A scoped run ("Expand with agents"): `scope` is the node whose subtree the agents work in, `focus` the user's note for every round. */
+export interface RunOptions { scope?: string; focus?: string }
+
 const THINK_MS = 1200;
 const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -52,7 +55,11 @@ const pathTo = (nodes: IdeaNode[], id: string): string[] => {
   return out;
 };
 
-/** Plain async loop: one agent per round plans, travels, thinks, spawns and links; then the Strategist writes the takeaway. */
+/**
+ * Plain async loop: one agent per round plans, travels, thinks, spawns and links; then the Strategist writes the
+ * takeaway. A scoped run picks its targets inside the scope node's subtree only (cross-links may still leave it), sends
+ * the focus note with every round and skips the takeaway.
+ */
 export class AgentRunner {
   private handlers: { [K in keyof Events]: Set<Events[K]> } = { phase: new Set(), status: new Set(), log: new Set(), round: new Set(), finished: new Set(), error: new Set() };
   private current: Promise<void> | null = null;
@@ -74,11 +81,11 @@ export class AgentRunner {
     this.paused = true;
   }
 
-  start(brainId: string, rounds: number): Promise<void> {
+  start(brainId: string, rounds: number, opts: RunOptions = {}): Promise<void> {
     if (this.current) return this.current;
     this.paused = false;
     // Deferred a microtask so `current` is set before the loop emits its first event (handlers see running === true).
-    const run = Promise.resolve().then(() => this.loop(brainId, rounds)).finally(() => {
+    const run = Promise.resolve().then(() => this.loop(brainId, rounds, opts)).finally(() => {
       this.current = null;
       this.emit('phase', null, null);
     });
@@ -90,8 +97,9 @@ export class AgentRunner {
     for (const cb of this.handlers[event] as Set<(...a: Parameters<Events[K]>) => void>) cb(...args);
   }
 
-  private async loop(brainId: string, rounds: number): Promise<void> {
+  private async loop(brainId: string, rounds: number, { scope, focus: rawFocus }: RunOptions): Promise<void> {
     const { deps } = this;
+    const focus = rawFocus?.trim().slice(0, 300) || undefined;
     const sleep = deps.sleep ?? defaultSleep;
     const rand = deps.rand ?? Math.random;
     const now = deps.now ?? Date.now;
@@ -128,7 +136,9 @@ export class AgentRunner {
         // A full brain stops the run before spending an LLM call (the server enforces the same ceiling).
         const room = MAX_NODES_PER_BRAIN - before.nodes.length;
         if (room <= 0) throw new Error(BRAIN_FULL_MESSAGE);
-        const target = pickTarget(agent, before.nodes, this.hits.counts, rand);
+        // A scope whose node is gone (deleted mid-run) yields no target and ends the run.
+        const within = scope === undefined ? undefined : subtreeIds(before.nodes, scope);
+        const target = pickTarget(agent, before.nodes, this.hits.counts, rand, within);
         if (!target) break;
         this.hits.counts[target.id] = (this.hits.counts[target.id] ?? 0) + 1;
         const idea = { title: before.title, summary: before.summary };
@@ -144,7 +154,7 @@ export class AgentRunner {
         this.emit('status', `${agent.name} is sprouting ideas on ${target.name}`);
         think(agent.id, target.id, 'sprouting ideas on');
         const [reply] = await Promise.all([
-          deps.api.agentRound({ agent: agent.id, idea, mapLines: mapLines(before.nodes), links: before.links, target, nodes: before.nodes }),
+          deps.api.agentRound({ agent: agent.id, idea, mapLines: mapLines(before.nodes), links: before.links, target, nodes: before.nodes, ...(focus ? { focus } : {}) }),
           sleep(THINK_MS),
         ]);
         meta(reply.meta);
@@ -185,7 +195,8 @@ export class AgentRunner {
 
       if (alive() && completed - startRound >= rounds) {
         const b = brain();
-        if (b && (await this.takeaway(b, ctx))) {
+        if (scope !== undefined) finished = b !== null;
+        else if (b && (await this.takeaway(b, ctx))) {
           await leave();
           finished = true;
         }
@@ -201,7 +212,8 @@ export class AgentRunner {
     }
 
     if (finished) {
-      this.emit('status', `Done · ${rounds} rounds`);
+      const on = scope === undefined ? '' : ` on ${brain()?.nodes.find((n) => n.id === scope)?.name ?? 'the node'}`;
+      this.emit('status', `Done · ${rounds} rounds${on}`);
       this.emit('finished');
     } else if (!failed) {
       this.emit('status', this.paused && brain() !== null && completed > startRound ? `Paused after round ${completed}` : '');

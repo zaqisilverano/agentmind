@@ -20,8 +20,8 @@ export const PROMPTS = {
   agentRound: {
     system: (agent: { name: string; brief: string }): string =>
       `You are the ${agent.name} agent on a brainstorming team. ${agent.brief} Reply with JSON only.`,
-    user: (a: { idea: IdeaRef; mapLines: string; links: CrossLink[]; target: IdeaNode; critic?: boolean }): string =>
-      `Idea: ${a.idea.title} — ${a.idea.summary}\nMap (id | name | kind | parent):\n${a.mapLines}\nExisting cross-links: ${a.links.map(l => `${l.a}~${l.b}`).join(', ') || 'none'}\n\nYour target node: ${a.target.id} (${a.target.name})${a.target.note ? ` — ${a.target.note}` : ''}\nReturn {"thought":"one sentence, first person, what you noticed","children":[{"name":"1-4 words","note":"one sentence"}],"links":[{"a":"node id","b":"node id","why":"under 10 words"}]}. Give 2-3 new children for the target that are not already on the map${a.critic ? ', framed as critiques or risks of the target' : ''}. Give 0-1 links from the target to a node in a different branch, only when the connection is real.`,
+    user: (a: { idea: IdeaRef; mapLines: string; links: CrossLink[]; target: IdeaNode; critic?: boolean; focus?: string }): string =>
+      `Idea: ${a.idea.title} — ${a.idea.summary}\nMap (id | name | kind | parent):\n${a.mapLines}\nExisting cross-links: ${a.links.map(l => `${l.a}~${l.b}`).join(', ') || 'none'}\n\nYour target node: ${a.target.id} (${a.target.name})${a.target.note ? ` — ${a.target.note}` : ''}${a.focus ? `\nThe user wants you to focus on: ${a.focus}` : ''}\nReturn {"thought":"one sentence, first person, what you noticed","children":[{"name":"1-4 words","note":"one sentence"}],"links":[{"a":"node id","b":"node id","why":"under 10 words"}]}. Give 2-3 new children for the target that are not already on the map${a.critic ? ', framed as critiques or risks of the target' : ''}. Give 0-1 links from the target to a node in a different branch, only when the connection is real.`,
   },
   takeaway: {
     system: 'You are the Strategist agent. You converge a brainstorm into one clear direction. Reply with JSON only.',

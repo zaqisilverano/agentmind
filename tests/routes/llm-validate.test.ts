@@ -45,6 +45,20 @@ describe('LLM route post-validation', () => {
     expect((await res.json()).data.links).toHaveLength(1);
   });
 
+  it('agent-round puts the focus note in the prompt, and refuses one over 300 characters', async () => {
+    const sent: string[] = [];
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      sent.push(String(init.body));
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ thought: 'I looked.', children: [{ name: 'A', note: '' }], links: [] }) } }] }), { status: 200 });
+    });
+    const body = { agent: 'researcher', idea, mapLines: mapLines(nodes), links: [], target: nodes.find((n) => n.id === 'b0'), nodes };
+    expect((await post(agentRound.POST, { ...body, focus: 'pricing for students' })).status).toBe(200);
+    expect(sent.at(-1)).toContain('The user wants you to focus on: pricing for students');
+    expect((await post(agentRound.POST, body)).status).toBe(200);
+    expect(sent.at(-1)).not.toContain('focus on');
+    expect((await post(agentRound.POST, { ...body, focus: 'x'.repeat(301) })).status).toBe(400);
+  });
+
   it('takeaway with an unknown leaf is replaced by the fallback', async () => {
     modelSays({ leaf: 'nope', verdict: 'Do it.', brief: 'Because.' });
     const res = await post(takeaway.POST, { idea, mapLines: mapLines(nodes), links: [], nodes });

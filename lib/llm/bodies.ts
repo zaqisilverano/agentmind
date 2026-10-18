@@ -25,6 +25,8 @@ export const AgentRoundBody = z.object({
   links: Links,
   target: IdeaNodeSchema,
   nodes: Nodes,
+  /** The user's note for a scoped run ("Expand with agents" with text in the input). */
+  focus: z.string().max(300).optional(),
 });
 
 export const TakeawayBody = z.object({ idea: Idea, mapLines: MapLines, links: Links, nodes: Nodes.min(1) });

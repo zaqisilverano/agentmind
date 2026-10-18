@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { AgentEvent, Brain, LogEntry } from '@/engine/types';
+import { subtreeIds } from '@/lib/agents/pickTarget';
 import { AgentRunner } from '@/lib/agents/runner';
 import type { AgentRoundReplyOut, TakeawayReplyOut } from '@/lib/llm/schemas';
 import type { LlmMeta } from '@/lib/apiClient';
@@ -28,7 +29,7 @@ function setup(opts: { links?: (target: string) => L[] } = {}) {
     leaf: 'b2c1',
     onTakeaway: () => {},
     onRound: (_n: number) => {},
-    onAgentRound: (_body: { target: { id: string } }) => {},
+    onAgentRound: (_body: { target: { id: string }; focus?: string }) => {},
     onApplied: (_n: number) => {},
     onScene: (_e: AgentEvent) => {},
   };
@@ -298,6 +299,73 @@ describe('AgentRunner', () => {
     expect(b).toBe(a);
     expect(runner.running).toBe(true);
     await a;
+  });
+
+  it('a full run sends no focus', async () => {
+    const { h, runner } = setup();
+    const focus: (string | undefined)[] = [];
+    h.onAgentRound = (b) => { focus.push(b.focus); };
+    await runner.start('brain-1', 2);
+    expect(focus).toEqual([undefined, undefined]);
+  });
+
+  describe('scoped run', () => {
+    it('keeps every target inside the scope node and its descendants', async () => {
+      const { h, runner } = setup();
+      const targets: string[] = [];
+      h.onAgentRound = (b) => { targets.push(b.target.id); };
+      await runner.start('brain-1', 5, { scope: 'b2' });
+      expect(targets).toHaveLength(5);
+      const scope = subtreeIds(h.brain.nodes, 'b2');
+      expect(targets.every((t) => scope.has(t))).toBe(true);
+      // Each round's children land under a scoped target, so the subtree grew by two per round.
+      expect(h.rounds.map((r) => r.nodes)).toEqual([2, 2, 2, 2, 2]);
+      expect(h.brain.nodes.filter((n) => n.by !== null).every((n) => scope.has(n.id))).toBe(true);
+    });
+
+    it('skips the takeaway and ends with "Done · n rounds on <node>"', async () => {
+      const { h, runner } = setup();
+      let asked = 0;
+      h.onTakeaway = () => { asked += 1; };
+      await runner.start('brain-1', 2, { scope: 'b2' });
+      const round = ['plan', 'travel', 'think', 'spawn', 'prepareLink', 'link', 'done'];
+      expect(types(h.events)).toEqual([...round, ...round]);
+      expect(asked).toBe(0);
+      expect(h.takeaways).toHaveLength(0);
+      expect(h.brain.synth).toBeNull();
+      expect(h.emitted).not.toContain('phase:takeaway');
+      expect(h.emitted).toContain('finished');
+      const name = h.brain.nodes.find((n) => n.id === 'b2')!.name;
+      expect(h.emitted).toContain(`status:Done · 2 rounds on ${name}`);
+      expect(runner.running).toBe(false);
+    });
+
+    it('forwards the focus note, trimmed, on every round', async () => {
+      const { h, runner } = setup();
+      const focus: (string | undefined)[] = [];
+      h.onAgentRound = (b) => { focus.push(b.focus); };
+      await runner.start('brain-1', 3, { scope: 'b2', focus: '  pricing for students  ' });
+      expect(focus).toEqual(['pricing for students', 'pricing for students', 'pricing for students']);
+    });
+
+    it('still allows cross-links out of the subtree', async () => {
+      const { h, runner } = setup();
+      await runner.start('brain-1', 1, { scope: 'b2' });
+      expect(h.rounds[0].links).toBe(1);
+      expect(h.brain.links[0].b).toBe('b4c0');
+    });
+
+    it('stops when the scope node is deleted mid-run', async () => {
+      const { h, runner } = setup();
+      h.onApplied = () => {
+        const doomed = subtreeIds(h.brain.nodes, 'b2');
+        h.brain.nodes = h.brain.nodes.filter((n) => !doomed.has(n.id));
+      };
+      await runner.start('brain-1', 3, { scope: 'b2' });
+      expect(h.rounds).toHaveLength(1);
+      expect(h.emitted).not.toContain('finished');
+      expect(types(h.events).at(-1)).toBe('done');
+    });
   });
 
   it('on() returns an unsubscribe function', async () => {

@@ -10,6 +10,13 @@ describe("prompts", () => {
   it("agent system prompt wraps name and brief", () => {
     expect(PROMPTS.agentRound.system({ name: "Skeptic", brief: "Attacks." })).toBe("You are the Skeptic agent on a brainstorming team. Attacks. Reply with JSON only.");
   });
+  it("agent round user prompt has the focus line only when given", () => {
+    const a = { idea: { title: "T", summary: "S" }, mapLines: mapLines(b.nodes), links: [], target: b.nodes[1] };
+    expect(PROMPTS.agentRound.user(a)).not.toContain("focus on");
+    const withFocus = PROMPTS.agentRound.user({ ...a, focus: "pricing" });
+    expect(withFocus).toContain("\nThe user wants you to focus on: pricing\nReturn ");
+    expect(withFocus.replace("\nThe user wants you to focus on: pricing", "")).toBe(PROMPTS.agentRound.user(a));
+  });
   it("expand user prompt includes the question only when given", () => {
     const a = { title: "T", summary: "S", path: ["T", "N"], existing: ["x"] };
     expect(PROMPTS.expand.user(a)).not.toContain("The user asks");
