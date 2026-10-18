@@ -49,7 +49,7 @@ Without an LLM API key the app still works: it falls back to a local keyword par
 
 Each round: **plan → travel → think → spawn → link → done**.
 
-<!-- TODO: demo.gif -->
+<img src="docs/media/demo.gif" width="100%" alt="agentmind demo: type an idea, press Run agents, five agents grow a 3D map, switch views and themes, export">
 
 ## Views and themes
 
