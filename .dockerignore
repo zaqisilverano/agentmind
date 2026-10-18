@@ -14,3 +14,8 @@ test-results
 coverage
 .env*
 !.env.example
+# Database dumps (anywhere), but not the migrations the image needs.
+**/*.sql
+!db/migrations/*.sql
+backups
+**/backups

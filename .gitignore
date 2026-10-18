@@ -25,3 +25,8 @@ yarn-debug.log*
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Database dumps: never commit them or send them into the Docker build context.
+*.sql
+!db/migrations/*.sql
+backups/
