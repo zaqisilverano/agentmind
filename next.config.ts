@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
     return [
       // Every route: the fixed headers.
       { source: "/(.*)", headers: all.filter((h) => !isCsp(h)) },
-      // API routes: the static strict CSP. Pages get a nonce CSP from proxy.ts.
-      { source: "/api/:path*", headers: all.filter(isCsp) },
+      // API routes: the static strict CSP. Pages get a nonce CSP from proxy.ts. `:path+` leaves bare /api (not a
+      // route) to the proxy, so no path gets both policies.
+      { source: "/api/:path+", headers: all.filter(isCsp) },
     ];
   },
 };
