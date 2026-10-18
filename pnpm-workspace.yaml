@@ -1,0 +1,5 @@
+# pnpm settings (pnpm 11+ no longer reads the "pnpm" field in package.json).
+# Dependencies whose install scripts may run. pnpm fails the install on any other package with a build script.
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true

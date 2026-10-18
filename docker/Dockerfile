@@ -1,23 +1,23 @@
 # Build from the repo root: docker build -f docker/Dockerfile .
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # Keep the pnpm version in step with "packageManager" in package.json.
-RUN corepack enable && corepack prepare pnpm@10.34.7 --activate
-COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@12.14.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # All deps, including dev: the build needs tsx (prebuild) and esbuild (build:migrate).
 RUN pnpm install --frozen-lockfile
 
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1 \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && corepack prepare pnpm@10.34.7 --activate
+RUN corepack enable && corepack prepare pnpm@12.14.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build && pnpm build:migrate
 
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
