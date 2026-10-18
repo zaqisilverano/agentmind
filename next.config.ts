@@ -3,6 +3,9 @@ import { securityHeaders } from "./lib/securityHeaders";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // next dev (16.3+) would otherwise append its managed block to AGENTS.md, which must stay identical to CLAUDE.md
+  // (tests/unit/agents-md.test.ts).
+  agentRules: false,
   async headers() {
     const env = process.env.NODE_ENV === "production" ? "production" : "development";
     const all = securityHeaders(env);
