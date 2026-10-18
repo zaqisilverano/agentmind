@@ -40,9 +40,9 @@ describe('securityHeaders', () => {
   });
 });
 
-describe('middleware matcher', () => {
+describe('proxy matcher', () => {
   it('skips API routes and Next assets by path segment, not by prefix', async () => {
-    const { config } = await import('@/middleware');
+    const { config } = await import('@/proxy');
     const re = new RegExp(`^${config.matcher[0].source}$`);
     for (const p of ['/', '/apiary', '/api', '/_nextish']) expect(re.test(p), p).toBe(true);
     for (const p of ['/api/me', '/api/brains/x', '/_next/static/chunk.js', '/_next/image', '/favicon.ico']) expect(re.test(p), p).toBe(false);

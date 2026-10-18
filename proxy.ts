@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { csp } from '@/lib/securityHeaders';
 
 /**
- * Per-request CSP nonce for page routes. Next reads the nonce from the request's
- * Content-Security-Policy header and applies it to the inline scripts it emits.
+ * Per-request CSP nonce for page routes (the Next 16 proxy, formerly middleware). Next reads the nonce from the
+ * request's Content-Security-Policy header and applies it to the inline scripts it emits.
  * API routes and static assets are excluded by the matcher; API routes get the static
  * strict CSP from next.config.ts.
  */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
   const policy = csp(env, nonce);

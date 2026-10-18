@@ -77,14 +77,16 @@ export function useRunInput() {
   };
 }
 
-export type RunInput = ReturnType<typeof useRunInput>;
+/** The input state without its ref (see InputBar): what the bars render from. */
+export type RunInput = Omit<ReturnType<typeof useRunInput>, 'inputRef'>;
 
 /**
  * Bottom bar: "New brain" while nothing is selected, "Focus node" with a node selected, the serif input, and the one
  * ▶ Run agents / ❚❚ Pause button. A failed save shows "Not saved · Retry" next to the status.
  */
 export function InputBar() {
-  const r = useRunInput();
+  // The ref is taken out first: the React Compiler lint treats every field of an object that holds a ref as a ref.
+  const { inputRef, ...r } = useRunInput();
 
   return (
     <div data-testid="input-bar" className="fixed bottom-11 left-1/2 z-[2] flex w-[min(720px,calc(100%-88px))] -translate-x-1/2 flex-col gap-2">
@@ -92,7 +94,7 @@ export function InputBar() {
       <div className="flex items-stretch border border-ink bg-panel shadow-[var(--shadow5)]">
         <div className="flex items-center whitespace-nowrap border-r border-ink px-[14px] text-[10px] uppercase tracking-[0.16em]">{r.focusing ? 'Focus node' : 'New brain'}</div>
         <input
-          ref={r.inputRef}
+          ref={inputRef}
           value={r.text}
           maxLength={r.maxLength}
           disabled={r.mapping}

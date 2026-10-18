@@ -99,6 +99,8 @@ export function PanelsDev() {
     configureSync({ api: syncApi });
     configureController({ api: controllerApi });
     window.__store = useStore;
+    // Render the shell only after the stubs are in place; this page is development-only.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReady(true);
     return () => {
       configureSync();

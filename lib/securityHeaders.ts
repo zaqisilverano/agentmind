@@ -14,7 +14,7 @@ export interface HeaderEntry {
  *
  * Next's App Router emits inline <script> tags (the RSC payload and bootstrap), which a plain
  * script-src 'self' blocks, so the page never hydrates. Pages therefore get a per-request nonce
- * from middleware.ts (csp(env, nonce)), and Next stamps the nonce on its own scripts.
+ * from proxy.ts (csp(env, nonce)), and Next stamps the nonce on its own scripts.
  * securityHeaders(env) with no nonce is the strict static policy, used for API routes (JSON,
  * no scripts) via next.config.ts.
  *

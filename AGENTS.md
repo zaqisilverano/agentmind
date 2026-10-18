@@ -3,7 +3,7 @@ agentmind (github.com/zaqisilverano/agentmind, brand written lowercase): public 
 
 ## Layout
 - `app/` routes and API (`app/api/{me,brains,llm,health}`), `components/` React UI, `engine/` Three.js scene and pure layout, `lib/` store, sync, llm, agents, export, sample, brains, `db/` Drizzle schema, client, migrations, `docker/`, `scripts/`, `tests/{unit,routes,e2e}`.
-- `middleware.ts` sets the per-request CSP nonce for pages; `next.config.ts` sets the static headers.
+- `proxy.ts` sets the per-request CSP nonce for pages; `next.config.ts` sets the static headers.
 
 ## Boundary rule
 engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, next or db/. engine/layout.ts must not import three (it is bundled into the 3D HTML export). ESLint enforces both (`eslint.config.mjs`; type-only imports are allowed), and `pnpm lint` covers engine/, db/, scripts/ and tests/ too.

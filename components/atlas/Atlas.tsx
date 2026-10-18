@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { AtlasScene } from '@/engine/AtlasScene';
 import type { Brain, Mode, ThemeId } from '@/engine/types';
 
@@ -23,9 +23,12 @@ export function Atlas({ brain, mode, theme, selected, showPath, onPick, onReady,
   const labelRef = useRef<HTMLDivElement>(null);
   const agentRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<AtlasScene | null>(null);
-  // Latest props for the mount effect and the pick subscription, so the scene is created once.
+  // Latest props for the mount effect and the pick subscription, so the scene is created once. Updated in a layout
+  // effect (not during render), which runs before the mount effect below.
   const latest = useRef({ mode, theme, onPick, onReady });
-  latest.current = { mode, theme, onPick, onReady };
+  useLayoutEffect(() => {
+    latest.current = { mode, theme, onPick, onReady };
+  });
 
   useEffect(() => {
     const el = canvasRef.current, labels = labelRef.current, agents = agentRef.current;

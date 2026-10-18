@@ -15,7 +15,7 @@ const mono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 });
 
-// Dynamic so every response carries a fresh CSP nonce (see middleware.ts).
+// Dynamic so every response carries a fresh CSP nonce (see proxy.ts).
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { selectIsEmpty, useStore, type SheetId } from '@/lib/store';
 import { pad3, useMapping } from '@/components/panels/BrainDropdown';
 import { StatusLine, useRunInput, type RunInput } from '@/components/panels/InputBar';
@@ -72,11 +72,11 @@ function TopBar() {
 }
 
 /** Serif idea input; Enter does what ▶ Run in the tab bar does (the bar has no button of its own). */
-function MobileInputBar({ r }: { r: RunInput }) {
+function MobileInputBar({ r, inputRef }: { r: RunInput; inputRef: RefObject<HTMLInputElement | null> }) {
   return (
     <div data-testid="mobile-input-bar" className="pointer-events-auto flex items-stretch border border-ink bg-panel shadow-[var(--shadow5)]">
       <input
-        ref={r.inputRef}
+        ref={inputRef}
         value={r.text}
         maxLength={r.maxLength}
         disabled={r.mapping}
@@ -133,8 +133,9 @@ export function MobileShell() {
   const sheet = useStore(s => s.ui.sheet);
   const setSheet = useStore(s => s.setSheet);
   const select = useStore(s => s.select);
-  // One input state for the input bar and the tab bar's Run button.
-  const r = useRunInput();
+  // One input state for the input bar and the tab bar's Run button. The ref is taken out first: the React Compiler lint
+  // treats every field of an object that holds a ref as a ref.
+  const { inputRef, ...r } = useRunInput();
 
   useEffect(() => {
     if (selected) setSheet('node');
@@ -169,7 +170,7 @@ export function MobileShell() {
       </div>
       <footer data-testid="mobile-bottom" className="flex flex-none flex-col gap-2">
         <StatusLine className="flex min-h-[14px] items-center justify-center gap-2 text-[10px] uppercase leading-[normal] tracking-[0.14em] text-muted [&>button]:pointer-events-auto" />
-        <MobileInputBar r={r} />
+        <MobileInputBar r={r} inputRef={inputRef} />
         <TabBar r={r} />
       </footer>
     </div>

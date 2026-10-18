@@ -3,8 +3,6 @@ import { securityHeaders } from "./lib/securityHeaders";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  // `next lint` and the build lint only app/, components/ and lib/ by default; the boundary rule also covers engine/.
-  eslint: { dirs: ["app", "components", "lib", "engine", "db", "scripts", "tests"] },
   async headers() {
     const env = process.env.NODE_ENV === "production" ? "production" : "development";
     const all = securityHeaders(env);
@@ -12,7 +10,7 @@ const nextConfig: NextConfig = {
     return [
       // Every route: the fixed headers.
       { source: "/(.*)", headers: all.filter((h) => !isCsp(h)) },
-      // API routes: the static strict CSP. Pages get a nonce CSP from middleware.ts.
+      // API routes: the static strict CSP. Pages get a nonce CSP from proxy.ts.
       { source: "/api/:path*", headers: all.filter(isCsp) },
     ];
   },
