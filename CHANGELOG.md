@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Upgraded the stack: Next.js 15.5 → 16.4 (Turbopack builds, `middleware.ts` renamed to `proxy.ts`, `next lint` replaced by `eslint .`), React 19.1 → 19.3, TypeScript 5.9 → 6.0 (7.0 is not yet supported by typescript-eslint), eslint-config-next 16 with native flat configs, Node 22 → 24 LTS (Dockerfile, `.nvmrc`, `engines`, CI), pnpm 10 → 12 (settings move to `pnpm-workspace.yaml`), Postgres 16 → 18, Caddy pinned to 2.11, and GitHub Actions checkout v7, setup-node v7, pnpm/action-setup v6 and gitleaks-action v3. ESLint stays on 9.39 until the React, import and jsx-a11y plugins in eslint-config-next declare ESLint 10 support.
+- Postgres 18 data lives in a new volume, `agentmind_ab_pg18`, mounted at `/var/lib/postgresql` (the 18 image keeps `PGDATA` in `18/docker`). The Postgres 16 volume is left as a rollback; move existing brains with `pg_dump` and `psql` before starting the app (see README, Continuous deployment). The dev database moves to `ab_dev_pg18` the same way.
+- Deployment needs Docker Engine with the Compose plugin; `scripts/deploy.sh` no longer forces the classic builder.
 - One action button: "Map it →" and "Grow →" are gone, and ▶ Run agents (❚❚ Pause during a run) does everything. With typed text the first run maps the idea into a new brain and then runs the agents on it; with an empty input it runs the open brain. On a phone the input bar has no button: Enter or ▶ Run in the tab bar.
 - The node card's "Expand this node →" (one LLM call that added children) is replaced by "Expand with agents →". The `/api/llm/expand` route stays available.
 - Switched from npm to pnpm. The version is pinned in `packageManager` in `package.json`, the lockfile is `pnpm-lock.yaml`, and the Dockerfile and CI install with `pnpm install --frozen-lockfile`.

@@ -10,10 +10,11 @@
 
 [![CI](https://github.com/zaqisilverano/agentmind/actions/workflows/ci.yml/badge.svg)](https://github.com/zaqisilverano/agentmind/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1B1A17.svg)](LICENSE)
-![Node 22](https://img.shields.io/badge/node-22-00C46A.svg)
-![Next.js 15](https://img.shields.io/badge/Next.js-15-1B1A17.svg)
+![Node 24](https://img.shields.io/badge/node-24-00C46A.svg)
+![Next.js 16](https://img.shields.io/badge/Next.js-16-1B1A17.svg)
+![TypeScript 6](https://img.shields.io/badge/TypeScript-6-3178C6.svg)
 ![three.js](https://img.shields.io/badge/three.js-r186-1E7BFF.svg)
-![Postgres 16](https://img.shields.io/badge/Postgres-16-8B5CF6.svg)
+![Postgres 18](https://img.shields.io/badge/Postgres-18-8B5CF6.svg)
 
 <br>
 
@@ -23,19 +24,7 @@
 
 ## What it does
 
-**The map.** You type an idea and press **Run agents** (or Enter). An LLM first splits the idea into five or six branches, each with a few sub-ideas, and the app draws them as a 3D map in Three.js; then the agents start on it. You can orbit and zoom, switch between three layouts (Constellation, Orbit, Terrain) and three themes (Atlas, Observatory, Blueprint), click a node to read or edit it, add your own notes, or delete it with its branches.
-
-**The agents.** Five animated agents (Researcher, Builder, Customer, Skeptic, Strategist) take turns for 5, 10 or 20 rounds. Each round one agent picks a thin spot, walks to it, adds sub-ideas, and may draw a link between two branches. At the end the Strategist writes a Key takeaway and the map highlights the strongest path from the idea to one leaf. With the input empty, Run agents runs another set of rounds on the open brain.
-
-**Expand with agents.** On a node, **Expand with agents** runs the same rounds on that node and its sub-ideas only (links to other branches are still allowed), without a new takeaway. With a node selected, text in the input becomes a focus note the agents get every round, e.g. "pricing for students".
-
-**Persistence.** A first visit starts with an empty map: nothing is saved until you map your first idea. Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file. The 3D file opens offline in any browser: orbit the map, switch layouts, and click a node to read its kind, path, AI note, your notes, child ideas and cross-links.
-
-**On a phone.** Below 768 px wide the panels fold into a top bar, a phase bar, a tab bar (Map, Agents, Log, Key, Run) and one bottom sheet at a time; the 3D map stays full screen and responds to touch.
-
-<p align="center"><img src="docs/media/mobile-run.png" width="260" alt="agentmind on a phone: an agent run with the top bar, phase bar, map and tab bar"></p>
-
-Without an LLM API key the app still works: it falls back to a local keyword parser and template ideas, so you can try everything offline.
+Type an idea and press **Run agents**. agentmind breaks it into a 3D map of branches and sub-ideas, then five agents (Researcher, Builder, Customer, Skeptic and Strategist) take turns growing it: each picks a thin spot, adds ideas and links related branches, and the Strategist closes with a key takeaway and the strongest path. Orbit the map in three layouts and three themes, click any node to read it, add your own notes or let the agents expand just that branch, then download it as Markdown, JSON or a standalone 3D page. It runs on K2 Horizon by default or any OpenAI-compatible model, saves your brains under an anonymous ID with no account, works on phones, and still runs offline without an API key.
 
 ## Meet the agents
 
@@ -61,11 +50,11 @@ Each round: **plan → travel → think → spawn → link → done**.
 
 ## Stack
 
-Next.js 15 (App Router), React 19, TypeScript, Tailwind v4, three, Zustand, Zod, Drizzle with Postgres 16, Vitest with pglite, Playwright, Docker Compose with Caddy. Node 22.
+Next.js 16 (App Router, Turbopack), React 19.3, TypeScript 6, Tailwind v4, three r186, Zustand, Zod, Drizzle with Postgres 18, ESLint 9, Vitest with pglite, Playwright, Docker Compose with Caddy 2.11. Node 24 LTS, pnpm 12.
 
 ## Quick start
 
-Requirements: Node 22, pnpm 10, Docker.
+Requirements: Node 24, pnpm 12 (the exact version is pinned in `packageManager`), Docker.
 
 ```sh
 cp .env.example .env
@@ -172,7 +161,7 @@ docker/          Dockerfile, compose.yml (production), compose.dev.yml (Postgres
 scripts/         theme and export bundlers, eval, secrets hook, prod smoke test, deploy
 tests/           unit/ and routes/ (Vitest), e2e/ (Playwright)
 docs/            design spec, plan, prototype reference
-middleware.ts    per-request CSP nonce
+proxy.ts         per-request CSP nonce (Next.js proxy, formerly middleware)
 ```
 
 `engine/`, `lib/llm`, `lib/agents`, `lib/export` and `lib/sample` import nothing from React, Next or `db/`. `app/theme.generated.css` and `public/export/layout.js` are generated; do not edit them by hand.
@@ -184,7 +173,7 @@ middleware.ts    per-request CSP nonce
 | `pnpm dev` | Next.js dev server on port 3000. |
 | `pnpm build` | Production build. Runs `prebuild` first, which writes `public/export/layout.js`. |
 | `pnpm start` | Serves the production build. |
-| `pnpm lint` | ESLint via `next lint`. |
+| `pnpm lint` | ESLint over the whole repository (`eslint .`). |
 | `pnpm typecheck` | `tsc --noEmit`. |
 | `pnpm test` | Vitest, once. |
 | `pnpm test:watch` | Vitest in watch mode. |
@@ -203,11 +192,11 @@ middleware.ts    per-request CSP nonce
 - `pnpm eval`: sends the prompts in `scripts/eval-prompts.json` to the configured provider and prints source, attempts and latency per call. It reads `.env` and is not part of CI.
 - `sh scripts/prod-smoke.sh`: builds the production Docker image, runs it against the dev Postgres (published on port 3200 on macOS) and checks health, the anonymous cookie and one write behind a proxy-style `Host` header.
 
-CI runs lint, typecheck, `pnpm test`, `pnpm build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 16 service. A green CI run on `main` triggers the deploy workflow (see [Continuous deployment](#continuous-deployment)).
+CI runs lint, typecheck, `pnpm test`, `pnpm build` and gitleaks on every push and pull request, and the same production-image smoke test against a Postgres 18 service. A green CI run on `main` triggers the deploy workflow (see [Continuous deployment](#continuous-deployment)).
 
 ## Deployment
 
-The production stack is Docker Compose: the app, Postgres 16 and Caddy.
+The production stack is Docker Compose: the app, Postgres 18 and Caddy. The server needs Docker Engine with the Compose plugin.
 
 ```sh
 cp .env.example .env
@@ -216,7 +205,7 @@ docker compose --env-file .env -f docker/compose.yml up -d --build
 ```
 
 - Pass `--env-file .env`. Compose reads `${DOMAIN}` and the Postgres variables from it for interpolation.
-- The Compose project is named `agentmind`, so the containers are `agentmind-app-1`, `agentmind-db-1` and `agentmind-caddy-1`, and the database volume is `agentmind_ab_pg`.
+- The Compose project is named `agentmind`, so the containers are `agentmind-app-1`, `agentmind-db-1` and `agentmind-caddy-1`, and the database volume is `agentmind_ab_pg18` (mounted at `/var/lib/postgresql`, the layout the Postgres 18 image expects). The Postgres 16 volume `agentmind_ab_pg` is no longer used.
 - Caddy listens on ports 80 and 443 and gets a TLS certificate for `DOMAIN`. Point the domain's DNS at the server first.
 - Migrations run when the app container starts, under a Postgres advisory lock.
 - `DATABASE_URL` must use the service name `db`, not `localhost`.
@@ -244,7 +233,7 @@ Pass `--env-file .env` on every compose command for this stack. The command read
 
 ### Continuous deployment
 
-`.github/workflows/deploy.yml` deploys to the VPS after every green CI run on a push to `main`. It installs an SSH key, pipes `scripts/deploy.sh` to the server over SSH with the commit CI tested, then checks `https://<DEPLOY_DOMAIN>/api/health` for `"db":true`. Deploys run one at a time. On the server, `scripts/deploy.sh` resets `~/apps/agentmind` (a clone with an `origin` remote on GitHub and a production `.env`) to that commit, rebuilds and restarts the stack with `docker/compose.yml` and `docker/compose.proxy.yml`, waits up to 90 s for the `agentmind` container to report healthy, and prunes dangling images. It uses the classic Docker builder (`DOCKER_BUILDKIT=0`).
+`.github/workflows/deploy.yml` deploys to the VPS after every green CI run on a push to `main`. It installs an SSH key, pipes `scripts/deploy.sh` to the server over SSH with the commit CI tested, then checks `https://<DEPLOY_DOMAIN>/api/health` for `"db":true`. Deploys run one at a time. On the server, `scripts/deploy.sh` resets `~/apps/agentmind` (a clone with an `origin` remote on GitHub and a production `.env`) to that commit, rebuilds and restarts the stack with `docker/compose.yml` and `docker/compose.proxy.yml`, waits up to 90 s for the `agentmind` container to report healthy, and prunes dangling images.
 
 The workflow needs these repository secrets:
 
@@ -258,6 +247,15 @@ The workflow needs these repository secrets:
 
 > [!IMPORTANT]
 > First deploy on a server that ran the old `agentic-brainstorm` stack: stop the old compose project (`docker compose -p docker … down`), point your reverse proxy at `agentmind:3000`, make sure `~/apps/agentmind` is a clone with an `origin` remote on GitHub, and copy the Postgres volume from `docker_ab_pg` to `agentmind_ab_pg` if you want to keep existing brains.
+>
+> Postgres 18 uses a new volume, `agentmind_ab_pg18`, so a server that ran Postgres 16 starts on an empty database. To keep existing brains, stop the app (`docker stop agentmind`) and dump the old database while the Postgres 16 container still runs, then deploy the new compose files, start only the new database (`docker compose --env-file .env -f docker/compose.yml -f docker/compose.proxy.yml up -d --wait db`) and restore into it before starting the app:
+>
+> ```sh
+> docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > agentmind-pg16.sql
+> docker compose --env-file .env -f docker/compose.yml exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" "$POSTGRES_DB"' < agentmind-pg16.sql
+> ```
+>
+> The old volume stays untouched as a rollback.
 
 ## Privacy
 
@@ -279,7 +277,7 @@ If you run your own instance, you are the operator of that data.
 
 ## Security
 
-- Content Security Policy with a per-request nonce on pages (`middleware.ts`), and a strict static CSP on API routes. Also `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and a restrictive `Permissions-Policy`.
+- Content Security Policy with a per-request nonce on pages (`proxy.ts`), and a strict static CSP on API routes. Also `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and a restrictive `Permissions-Policy`.
 - Rate limits on LLM routes, per user and per IP.
 - JSON bodies are capped at 256 KB and validated with Zod.
 - JSON POST routes require `application/json` and reject a cross-origin `Origin` header.

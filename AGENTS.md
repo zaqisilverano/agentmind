@@ -6,10 +6,10 @@ agentmind (github.com/zaqisilverano/agentmind, brand written lowercase): public 
 - `proxy.ts` sets the per-request CSP nonce for pages; `next.config.ts` sets the static headers.
 
 ## Boundary rule
-engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, next or db/. engine/layout.ts must not import three (it is bundled into the 3D HTML export). ESLint enforces both (`eslint.config.mjs`; type-only imports are allowed), and `pnpm lint` covers engine/, db/, scripts/ and tests/ too.
+engine/, lib/llm, lib/agents, lib/export, lib/sample import nothing from react, next or db/. engine/layout.ts must not import three (it is bundled into the 3D HTML export). ESLint enforces both (`eslint.config.mjs`; type-only imports are allowed), and `pnpm lint` (`eslint .`) covers the whole repo, engine/, db/, scripts/ and tests/ included.
 
 ## Commands
-- Package manager: pnpm (version pinned in `packageManager`). Install with `pnpm install --frozen-lockfile`; never add a package-lock.json.
+- Node 24 LTS (`.nvmrc`). Package manager: pnpm 12 (version pinned in `packageManager`; settings such as `allowBuilds` live in `pnpm-workspace.yaml`, not package.json). Install with `pnpm install --frozen-lockfile`; never add a package-lock.json.
 - `pnpm dev` · `pnpm typecheck` · `pnpm lint` · `pnpm test` (unit + route tests on pglite, no Postgres needed)
 - `pnpm test:e2e` Playwright; starts its own server on :3100 and migrates; needs the dev Postgres (`docker compose -f docker/compose.dev.yml up -d`)
 - `pnpm eval` prompt eval against the configured LLM provider (not in CI)

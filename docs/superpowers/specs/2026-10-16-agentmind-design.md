@@ -12,15 +12,15 @@ The visual design, interaction details and agent behaviour are fixed by the prot
 
 ## 2. Stack
 
-- Next.js 15, App Router, TypeScript strict, React 19.
+- Next.js 16, App Router (Turbopack), TypeScript strict (TypeScript 6), React 19.3. (Originally Next.js 15; upgraded on 2026-10-18.)
 - Tailwind CSS v4 with CSS variables for theme tokens.
 - Three.js (current release) with `OrbitControls` from `three/examples/jsm`.
 - Zustand for client state.
 - Zod for every contract (API bodies, LLM replies, env).
-- Drizzle ORM with `postgres` driver; Postgres 16.
+- Drizzle ORM with `postgres` driver; Postgres 18 (originally 16).
 - Vitest for unit and route tests, `@electric-sql/pglite` for in-process Postgres in tests, Playwright for the smoke test.
 - Docker Compose for production on the OVH VPS; Caddy for HTTPS.
-- Package manager: pnpm (originally npm; switched on 2026-10-17). Node 22 LTS in the Dockerfile.
+- Package manager: pnpm 12 (originally npm; switched on 2026-10-17). Node 24 LTS in the Dockerfile (originally 22).
 
 ## 3. Project structure
 

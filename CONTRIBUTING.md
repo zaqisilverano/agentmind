@@ -4,7 +4,7 @@ Thanks for helping. This is a small project; keep changes focused and easy to re
 
 ## Setup
 
-You need Node 22 (see `.nvmrc`), pnpm 10 (the exact version is pinned in `packageManager` in `package.json`; `corepack enable` picks it up), and Docker for the dev database.
+You need Node 24 LTS (see `.nvmrc`), pnpm 12 (the exact version is pinned in `packageManager` in `package.json`; `corepack enable` picks it up, and so does a globally installed pnpm), and Docker for the dev database (Postgres 18). pnpm settings, such as the `allowBuilds` list of dependencies whose install scripts may run, live in `pnpm-workspace.yaml`.
 
 ```sh
 cp .env.example .env
