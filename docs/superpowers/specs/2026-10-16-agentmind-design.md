@@ -111,7 +111,7 @@ Anonymous only. No accounts in v1.
 - Cookie name `ab_uid`. Value `<uuid>.<hmac-sha256 hex>` signed with `COOKIE_SECRET`. Flags: httpOnly, SameSite=Lax, Path=/, Max-Age 1 year, Secure when `NODE_ENV=production`.
 - `lib/identity.ts` exports `sign(uuid)`, `verify(value) → uuid | null`, and `requireUser(req) → { userId, setCookie?: string }`. A missing or invalid cookie creates a new `users` row and returns a `Set-Cookie` header for the route to attach. Every API route uses `requireUser`.
 - `GET /api/me` returns `{ user: { id, createdAt }, brains: [{ id, number, title, nodeCount, updatedAt }] }` and sets the cookie on first visit. It never creates brains: a new user gets `brains: []`, and their first mapped idea becomes brain № 001.
-- Empty state (once `/api/me` has answered, no brain open and no saved brains: a first visit, or after deleting the last brain; never while loading or after a failed load, which keeps "Could not reach the server"): the canvas shows only the ground; the left panel shows the "Second brain — ▾" dropdown (its menu holds only "+ New second brain"), the title "Your second brain", the summary "Type an idea below. The map, the agents and the takeaway grow from there.", the idle agent team and the ID line, with no takeaway or legend; the hidden-panel tab reads "» Your second brain". The input is focused, "Map it →" is enabled and "▶ Run agents" is disabled, the status line reads "Type an idea to map your first second brain." and the agent log reads "Map an idea first. Then press Run agents and five agents take turns growing it." The "Tool Library" sample (`lib/sample/toolLibrary.ts`, a verbatim port of the prototype sample) is kept for tests, fixtures and the dev pages only.
+- Empty state (once `/api/me` has answered, no brain open and no saved brains: a first visit, or after deleting the last brain; never while loading or after a failed load, which keeps "Could not reach the server"): the canvas shows only the ground; the left panel shows the "Second brain — ▾" dropdown (its menu holds only "+ New second brain"), the title "Your second brain", the summary "Type an idea below. The map, the agents and the takeaway grow from there.", the idle agent team and the ID line, with no takeaway or legend; the hidden-panel tab reads "» Your second brain". The input is focused and "▶ Run agents" is disabled until something is typed, the status line reads "Type an idea and press Run agents." and the agent log reads "Type an idea and press Run agents: the idea is mapped, then five agents take turns growing it." The "Tool Library" sample (`lib/sample/toolLibrary.ts`, a verbatim port of the prototype sample) is kept for tests, fixtures and the dev pages only.
 - Recovery: the left panel shows "Your ID: <first 8 chars>" with a copy button that copies the full uuid. A "Restore ID" input posts the uuid to `POST /api/me/restore`; the server verifies the uuid exists in `users` and re-issues the signed cookie. There is no other recovery path.
 - The uuid is mirrored to `localStorage['ab_uid_display']` for the panel only. The server never trusts it.
 
@@ -136,7 +136,7 @@ All routes: JSON only, bodies validated with Zod, body size capped at 256 KB, re
 | `POST /api/brains/:id/takeaway` | `{ synth, log }` sets synth and appends the log entry in one transaction |
 | `POST /api/llm/map` | `{ idea }` |
 | `POST /api/llm/expand` | `{ title, summary, path, existing, question? }` |
-| `POST /api/llm/agent-round` | `{ agent, idea, mapLines, links, target }` |
+| `POST /api/llm/agent-round` | `{ agent, idea, mapLines, links, target, nodes, focus? }` |
 | `POST /api/llm/takeaway` | `{ idea, mapLines, links }` |
 
 LLM routes never touch the database. LLM routes are rate-limited per user: token bucket in process memory, `RATE_LIMIT_PER_HOUR` default 60, 429 with `Retry-After` when exhausted.
@@ -154,7 +154,7 @@ LLM routes never touch the database. LLM routes are rate-limited per user: token
 
 `lib/agents/roster.ts` defines the five agents with id, name, colour, shape, owned kinds, brief and `critic` flag (Skeptic only), as in `AGENTS-SPEC.md` §7.
 
-`lib/agents/runner.ts` is a class with `start(brainId, rounds)`, `pause()`, and an `EventEmitter`-style `on(event, handler)` for the scene and UI. It depends on an injected `api` (the four LLM calls plus the two persistence calls) and the store. Events, in order per round:
+`lib/agents/runner.ts` is a class with `start(brainId, rounds, opts?: { scope?, focus? })`, `pause()`, and an `EventEmitter`-style `on(event, handler)` for the scene and UI. It depends on an injected `api` (the four LLM calls plus the two persistence calls) and the store. Events, in order per round:
 
 1. `phase('plan')`, `agentPlan({ agent, target })` — target from `pickTarget(agent, nodes)`: nodes at depth 1–3 in the agent's kinds, sorted by (child count asc, depth asc), ties random; if none, the core.
 2. `agentTravel({ agent, path })` — path is the list of node ids from `n0` through the branch to the target. The runner awaits the promise the scene returns.
@@ -166,6 +166,10 @@ LLM routes never touch the database. LLM routes are rate-limited per user: token
 8. `agentDone({ agent })`.
 
 Agent order is `round % 5` over `[researcher, builder, customer, skeptic, strategist]`. After the configured rounds: `phase('takeaway')`, Strategist pops in at `n0`, thinks (min 1200 ms), `POST /api/llm/takeaway`, the store sets `synth` with `path` from `n0` to the chosen leaf, the log gets a `Takeaway` entry, `POST /api/brains/:id/takeaway` persists, the takeaway card opens, path highlight turns on.
+
+Scoped run ("Expand with agents"): with `scope` (a node id), `pickTarget` gets the set of that node and its descendants and picks only from it, at any depth (the scope node itself is allowed, also when it is the core), preferring the agent's own kinds when any match; it never returns a node outside the scope. Travel, think, spawn, link, log and persistence are unchanged, and cross-links from the subtree to other branches are still allowed. `focus` (≤ 300 chars) is sent with every round and adds one line to the agent-round prompt: "The user wants you to focus on: <focus>". A scoped run skips the Strategist takeaway and ends with the status "Done · <n> rounds on <node name>"; the takeaway card is left as it was. The store's `run.scope` holds the node id while it runs, and the Agent team shows "Expanding <node name>".
+
+Starting a run (`startFromInput` in `lib/run.ts`, from ▶ Run agents or Enter): with a node selected, a scoped run on it with the input text as focus; with text and no selection, map the idea into a new brain (`llm.map` → `fromBranches` → `createBrain`, status "Mapping your idea…") and then a full run on it, keeping the text when mapping fails; with an empty input, a full run on the open brain; with neither text nor brain, nothing (the button is disabled).
 
 A run is bound to the brain id it started on. `pause()`, switching brains, deleting the brain, or a sync error stops it after the current step. No agent is visible while nothing runs.
 
@@ -185,7 +189,7 @@ Port of the prototype scene into modules under `engine/`. Numbers are the protot
 
 ## 10. Client state and sync
 
-`lib/store.ts` (Zustand): `user`, `brains` (list), `brain` (current, full), `selected`, `mode`, `theme`, `settings { rounds: 5|10|20 }`, `run { active, paused, round, total, phase, agent, status }`, `ui { leftHidden, focus, takeawayOpen, logOpen, openDropdown }`, `syncError`.
+`lib/store.ts` (Zustand): `user`, `brains` (list), `brain` (current, full), `selected`, `mode`, `theme`, `settings { rounds: 5|10|20 }`, `run { active, paused, round, total, phase, agent, status, scope }`, `ui { leftHidden, focus, takeawayOpen, logOpen, openDropdown }`, `syncError`.
 
 `lib/sync.ts`: every mutation applies to the store first, then calls the API. Mutations: `createBrain`, `selectBrain`, `deleteBrain`, `editNode`, `saveUserNote`, `deleteSubtree`, `addChildren`, `addLinks`, `applyRound`, `setTakeaway`, `renameBrain`. Each API call retries once on network error. On final failure, `syncError` holds the failed mutation; the UI shows a "Not saved · Retry" chip in the status line; retry re-sends. No silent rollback.
 
@@ -195,11 +199,11 @@ Mode, theme, settings and panel visibility are persisted in `localStorage` (`ab_
 
 Tailwind v4. Tokens as CSS variables on `html[data-theme]`: `--bg --panel --ink --muted --soft --faint --accent --hot --rule --rule2 --shadow5 --shadow3`. Tailwind utilities use them via `@theme` mapping, so no component hard-codes a colour. Fonts via `next/font/google`: Instrument Serif (regular, italic) and JetBrains Mono.
 
-Layout follows `AGENTS-SPEC.md` §4 exactly: full-screen canvas; double hairline frame inset 14 px and 19 px; left panel 300 px with brain dropdown and « hide button (» {title} tab when hidden), title 46 px serif, italic summary, Key takeaway card with Show/Hide path and collapse, Agent team list with status and counts and the Plan · Diverge · Connect · Takeaway phase bar, branch legend, identity line; top-right toolbar View ▾ / Design ▾ / Settings ▾ / Focus with only one dropdown open; node card on the right with kind and level, path, name with Edit (inline fields, Save/Cancel), AI note, My notes textarea (saves on blur or on selection change, shows "editing…" / "saved"), child chips, cross-links, Expand this node →, two-step Delete (not on core); agent log on the right when nothing is selected, capped height, collapsible, entries clickable; bottom input bar max 720 px with label "New brain" / "Ask node", serif 24 px input, Map it → / Grow → in accent, ▶ Run agents / ❚❚ Pause in ink, one-line status above; focus mode hides every panel, Exit focus button bottom right, Esc exits; hint "Drag to orbit · Scroll to zoom · Click a node" bottom right.
+Layout follows `AGENTS-SPEC.md` §4 exactly: full-screen canvas; double hairline frame inset 14 px and 19 px; left panel 300 px with brain dropdown and « hide button (» {title} tab when hidden), title 46 px serif, italic summary, Key takeaway card with Show/Hide path and collapse, Agent team list with status and counts and the Plan · Diverge · Connect · Takeaway phase bar, branch legend, identity line; top-right toolbar View ▾ / Design ▾ / Settings ▾ / Focus with only one dropdown open; node card on the right with kind and level, path, name with Edit (inline fields, Save/Cancel), AI note, My notes textarea (saves on blur or on selection change, shows "editing…" / "saved"), child chips, cross-links, Expand with agents → (a scoped run on the node, disabled while a run is active), two-step Delete (not on core); agent log on the right when nothing is selected, capped height, collapsible, entries clickable; bottom input bar max 720 px with label "New brain" / "Focus node" (placeholder "Type an idea — a startup, a story, a plan…" / "Steer the agents on “<node>” (optional)…"), serif 24 px input and one accent button, ▶ Run agents / ❚❚ Pause during a run / Mapping… while the idea is mapped, one-line status above; focus mode hides every panel, Exit focus button bottom right, Esc exits; hint "Drag to orbit · Scroll to zoom · Click a node" bottom right.
 
 Settings adds one extra row: "Provider: <model>" or "Provider: offline fallback", from the last LLM response's `meta`.
 
-Desktop layout at 768 px and wider, with no panel overlap down to 900×540. Below 768 px the panels fold into a top bar, a tab bar (Map, Agents, Log, Key, Run) and bottom sheets; the map stays full screen and responds to touch.
+Desktop layout at 768 px and wider, with no panel overlap down to 900×540. Below 768 px the panels fold into a top bar, a tab bar (Map, Agents, Log, Key, Run) and bottom sheets; the map stays full screen and responds to touch. The mobile input bar has no button: Enter, or ▶ Run in the tab bar, does what ▶ Run agents does on desktop.
 
 ## 12. Exports
 

@@ -23,9 +23,11 @@
 
 ## What it does
 
-**The map.** You type an idea. An LLM splits it into five or six branches, each with a few sub-ideas, and the app draws them as a 3D map in Three.js. You can orbit and zoom, switch between three layouts (Constellation, Orbit, Terrain) and three themes (Atlas, Observatory, Blueprint), click a node to read or edit it, add your own notes, expand a node, or delete it with its branches.
+**The map.** You type an idea and press **Run agents** (or Enter). An LLM first splits the idea into five or six branches, each with a few sub-ideas, and the app draws them as a 3D map in Three.js; then the agents start on it. You can orbit and zoom, switch between three layouts (Constellation, Orbit, Terrain) and three themes (Atlas, Observatory, Blueprint), click a node to read or edit it, add your own notes, or delete it with its branches.
 
-**The agents.** Five animated agents (Researcher, Builder, Customer, Skeptic, Strategist) take turns for 5, 10 or 20 rounds. Each round one agent picks a thin spot, walks to it, adds sub-ideas, and may draw a link between two branches. At the end the Strategist writes a Key takeaway and the map highlights the strongest path from the idea to one leaf.
+**The agents.** Five animated agents (Researcher, Builder, Customer, Skeptic, Strategist) take turns for 5, 10 or 20 rounds. Each round one agent picks a thin spot, walks to it, adds sub-ideas, and may draw a link between two branches. At the end the Strategist writes a Key takeaway and the map highlights the strongest path from the idea to one leaf. With the input empty, Run agents runs another set of rounds on the open brain.
+
+**Expand with agents.** On a node, **Expand with agents** runs the same rounds on that node and its sub-ideas only (links to other branches are still allowed), without a new takeaway. With a node selected, text in the input becomes a focus note the agents get every round, e.g. "pricing for students".
 
 **Persistence.** A first visit starts with an empty map: nothing is saved until you map your first idea. Every brain is saved in Postgres under an anonymous signed cookie. There are no accounts. Returning visitors see their own brains again, and a "Your ID" line with a Restore ID field lets you recover them on another browser. You can download a brain as Markdown, JSON or a standalone 3D HTML file. The 3D file opens offline in any browser: orbit the map, switch layouts, and click a node to read its kind, path, AI note, your notes, child ideas and cross-links.
 
