@@ -58,3 +58,18 @@ describe('root layout: Umami script tag', () => {
     expect(html).toContain('<main>page</main>');
   });
 });
+
+describe('root layout: share metadata', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('absolute URLs from DOMAIN, large-image card, full description', async () => {
+    vi.stubEnv('DOMAIN', 'agentmind.zaqi.build');
+    vi.resetModules();
+    const { generateMetadata } = await import('@/app/layout');
+    const meta = await generateMetadata();
+    expect(String(meta.metadataBase)).toBe('https://agentmind.zaqi.build/');
+    expect(meta.description).toBe('Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.');
+    expect(meta.openGraph).toMatchObject({ type: 'website', siteName: 'agentmind', url: '/' });
+    expect(meta.twitter).toMatchObject({ card: 'summary_large_image' });
+  });
+});

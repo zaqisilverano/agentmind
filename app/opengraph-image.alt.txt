@@ -1,0 +1,1 @@
+agentmind: A team of agents for every idea. Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.

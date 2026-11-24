@@ -3,6 +3,7 @@ import { Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import { headers } from 'next/headers';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { getAnalytics } from '@/lib/analyticsConfig';
+import { siteUrl } from '@/lib/siteUrl';
 import './globals.css';
 
 const serif = Instrument_Serif({
@@ -20,10 +21,27 @@ const mono = JetBrains_Mono({
 // Dynamic so every response carries a fresh CSP nonce (see proxy.ts).
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'agentmind',
-  description: 'Type an idea. Agents grow it into a 3D map.',
-};
+const TITLE = 'agentmind';
+const DESCRIPTION = 'Type an idea. Five agents grow it into a 3D map you can orbit, edit and export.';
+
+// Share tags. og:image comes from app/opengraph-image.png (a copy of docs/media/social-preview.png); X falls back to it.
+// metadataBase makes its URL absolute: https://<DOMAIN> in production, else the request host (lib/siteUrl.ts).
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers();
+  return {
+    metadataBase: siteUrl({
+      domain: process.env.DOMAIN,
+      host: h.get('host'),
+      forwardedHost: h.get('x-forwarded-host'),
+      forwardedProto: h.get('x-forwarded-proto'),
+      nodeEnv: process.env.NODE_ENV,
+    }),
+    title: TITLE,
+    description: DESCRIPTION,
+    openGraph: { type: 'website', siteName: TITLE, title: TITLE, description: DESCRIPTION, url: '/' },
+    twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
+  };
+}
 
 // viewport-fit=cover lets the mobile bars sit under the home indicator; they pad themselves with env(safe-area-inset-*).
 // resizes-content shrinks the layout viewport for the Android keyboard, so the fixed input bar stays above it.

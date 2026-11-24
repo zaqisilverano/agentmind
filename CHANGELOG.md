@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Link previews for the site: `og:` and `twitter:` tags with a 1280x640 share image (`app/opengraph-image.png`, the same image as the GitHub social preview), title and description. Image and page URLs are absolute, built from `DOMAIN` (or the request host when it is unset).
+
 ## [0.2.0] - 2026-11-24
 
 ### Added

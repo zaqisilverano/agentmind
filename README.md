@@ -86,7 +86,7 @@ Copy `.env.example` to `.env`. The environment is validated on first use; the co
 | `UMAMI_SCRIPT_URL` | empty | Optional. URL of the tracker script on your own [Umami](https://umami.is) server, for example `https://stats.example.com/script.js`. Must be https in production. Set it together with `UMAMI_WEBSITE_ID`, or leave both empty for no analytics: no script, no CSP change, no network calls. When set, page CSP `connect-src` also allows the script's origin, where the tracker posts events. An invalid or incomplete setting turns analytics off with one warning in the server log; pages and the API keep working. See [Privacy](#privacy). |
 | `UMAMI_WEBSITE_ID` | empty | Optional. The website's UUID from the Umami dashboard, sent as `data-website-id`. |
 | `UMAMI_DOMAINS` | empty | Optional. Comma-separated host names, for example `agentmind.zaqi.build`, sent as `data-domains` so Umami counts only visits to those hosts. Empty omits the attribute. |
-| `DOMAIN` | `agentmind.zaqi.build` | Production only. Public host name that Caddy serves and gets a TLS certificate for. |
+| `DOMAIN` | `agentmind.zaqi.build` | Production only. Public host name that Caddy serves and gets a TLS certificate for. The app also uses it for absolute share-link URLs (`og:image`, `og:url`); without it they use the request host. |
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | `atlas`, `atlas`, `atlas` | Production only. Credentials for the Postgres container in `docker/compose.yml`. Not in `.env.example`; set them in `.env` if you change them, and keep `DATABASE_URL` in step. |
 
 <details>
