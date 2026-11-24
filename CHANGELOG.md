@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
 ### Added
 
 - Optional privacy-friendly analytics with self-hosted Umami: set `UMAMI_SCRIPT_URL` and `UMAMI_WEBSITE_ID` to load the cookie-less tracker (nonced, `data-do-not-track`) and count page views plus four events with no user text: `map` (`source`, `nodes`), `run` (`rounds`), `expand` (`rounds`, `focus` yes/no) and `download` (`format`). Optional `UMAMI_DOMAINS` limits counting to those hosts (`data-domains`). The page CSP then allows `connect-src` to the tracker's origin. Both empty (the default) changes nothing; an invalid or incomplete setting turns analytics off with one logged warning and never breaks pages or the API.
@@ -45,3 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Docker Compose deployment with Caddy and automatic migrations, a Content Security Policy with per-request nonce, and a secrets pre-commit hook.
 - Vitest unit and route tests on pglite, and a prompt eval script (`npm run eval`).
 - GitHub Actions workflow with lint, typecheck, tests, build, gitleaks and a production Docker image smoke test.
+
+[Unreleased]: https://github.com/zaqisilverano/agentmind/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/zaqisilverano/agentmind/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/zaqisilverano/agentmind/releases/tag/v0.1.0
