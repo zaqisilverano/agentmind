@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Link previews for the site: `og:` and `twitter:` tags with a 1280x640 share image (`app/opengraph-image.png`, the same image as the GitHub social preview), title and description. Image and page URLs are absolute, built from `DOMAIN` (or the request host when it is unset).
 
+### Security
+
+- Upgraded Next.js and eslint-config-next 16.4.2 → 16.4.6, which fixes seven moderate Next.js advisories: GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf, GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8, GHSA-7qx7-33qx-rqx2, GHSA-f3mh-rxg3-f5g2 and GHSA-pc58-hwjq-p385 (cache disclosure and poisoning with `use cache`, an SVG check bypass in image optimization, HttpOnly cookie exposure on Edge routes, and cross-client response injection when self-hosted).
+
 ## [0.2.0] - 2026-11-24
 
 ### Added
